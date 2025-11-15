@@ -39,3 +39,15 @@
 
 # debug information files
 *.dwo
+
+# Build artifacts
+/build*
+/externals/llvm-project/build
+/externals/llvm-project/install
+
+# CMake files
+CMakeCache.txt
+CMakeFiles/
+
+# Emacs
+*~
