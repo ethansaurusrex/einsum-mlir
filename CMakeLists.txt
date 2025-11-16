@@ -7,11 +7,12 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 find_package(MLIR REQUIRED CONFIG)
 
-# Include MLIR’s CMake utilities
 list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
 include(AddMLIR)
 include(AddLLVM)
 include(TableGen)
+
+message(STATUS "MLIR_DIR = ${MLIR_DIR}")
 
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
