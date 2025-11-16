@@ -11,5 +11,5 @@ def EinsumDialect : Dialect {
       The dialect allows users to define einsum computations with tensors
       }];
 
-  let cppNamespace = "::mlir";
+  let cppNamespace = "::mlir::einsum";
 }
