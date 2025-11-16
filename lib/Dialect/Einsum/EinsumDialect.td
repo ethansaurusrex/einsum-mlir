@@ -12,4 +12,6 @@ def EinsumDialect : Dialect {
       }];
 
   let cppNamespace = "::mlir::einsum";
+
+  let useDefaultTypePrinterParser = 1;  
 }
