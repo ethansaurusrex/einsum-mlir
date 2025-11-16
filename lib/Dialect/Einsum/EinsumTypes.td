@@ -10,18 +10,23 @@ include "mlir/IR/AttrTypeBase.td"   // for TypedArrayAttrBase, ArrayAttr
 
 include "lib/Dialect/Einsum/EinsumDialect.td"
 
-class Einsum_Type<string cppName, string typeMnemonic>
-    : TypeDef<EinsumDialect, cppName> {
-  let mnemonic = typeMnemonic;
-}
-
 def NamedAxesTensorType
-    : Einsum_Type<"NamedAxesTensorType", "named_axes"> {
-
-  let summary = "Tensor wrapper with optional named axes";
+    : TypeDef<EinsumDialect, "NamedAxesTensorType"> {
+  let summary = "Tensor type with optional named axes";
   let description = [{
     A tensor type that stores:
-      - an underlying TensorType
-      - optional axis names
+      - an underlying element type (Type)
+      - optional axis names (ArrayAttr)
   }];
+
+  // Parameters stored in the TableGen-generated storage
+  let parameters = (ins
+      "::mlir::Type":$elementType,
+      "::mlir::ArrayAttr":$axisNames);
+
+  // Assembly format: <axis1,axis2,...> : f32
+  let assemblyFormat = "`<` $axisNames `:` $elementType `>`";
+
+  // Mnemonic used for parsing/printing
+  let mnemonic = "named_axes_tensor";
 }
