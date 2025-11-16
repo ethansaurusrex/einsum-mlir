@@ -1,0 +1,15 @@
+@LIT_SITE_CFG_IN_HEADER@
+
+# Substitute directories and variables from CMake
+config.llvm_tools_dir       = lit_config.substitute("@LLVM_TOOLS_DIR@")
+config.mlir_obj_dir         = lit_config.substitute("@MLIR_BINARY_DIR@")
+config.llvm_shlib_ext       = lit_config.substitute("@SHLIBEXT@")
+config.project_binary_dir   = lit_config.substitute("@PROJECT_BINARY_DIR@")
+config.project_source_dir   = lit_config.substitute("@PROJECT_SOURCE_DIR@")
+
+# Import and initialize LLVM/MLIR lit support
+import lit.llvm
+lit.llvm.initialize(lit_config, config)
+
+# Load the main per-project lit configuration
+lit_config.load_config(config, "@PROJECT_SOURCE_DIR@/tests/lit.cmake.cfg.py")
