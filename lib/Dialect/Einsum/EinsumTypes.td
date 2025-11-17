@@ -24,11 +24,11 @@ def NamedAxesTensorType
   }];
   // Parameters stored in the TableGen-generated storage
   let parameters = (ins
-      "Type":$elementType,
+      "RankedTensorType":$tensorType,
       "ArrayAttr":$axisNames);
 
   // Assembly format: <axis1,axis2,...> : f32
-  let assemblyFormat = "`<` $axisNames `:` $elementType `>`";
+  let assemblyFormat = "`<` $axisNames `:` $tensorType `>`";
 
   // Mnemonic used for parsing/printing
   let mnemonic = "named_axes_tensor";
