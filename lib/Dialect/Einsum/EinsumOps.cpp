@@ -8,17 +8,18 @@
 namespace mlir::einsum {
 
   LogicalResult EinsumHL::verify() {
-    /*
     Type firstElemType;
-    for (auto input : op.inputs()) {
-      auto tensorType = input.getType().cast<NamedAxesTensorType>();
-      auto elemType = tensorType.getElementType(); // you need to implement getElementType() in NamedAxesTensorType C++ class
+    for (auto input : getInputs()) {
+      auto natType = dyn_cast<NamedAxesTensorTypeType>(input.getType());
+      auto tensorType = dyn_cast<RankedTensorType>(natType.getTensorType());
+      auto elemType = tensorType.getElementType();
       if (!firstElemType)
 	firstElemType = elemType;
       else if (firstElemType != elemType)
-	return op.emitOpError("all input tensors must have the same element type");
+	return emitOpError("all input tensors must have the same element type");
     }
-    
+
+    /*
     // 2) Check that dimensions align according to equation
     auto equationAttr = op.equation();
     if (!equationAttr)
