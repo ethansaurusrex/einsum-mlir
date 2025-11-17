@@ -40,4 +40,31 @@ def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
   let hasVerifier=1;
 }
 
+
+def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
+  let summary = "Low-level symbolic einsum operation";
+  let description = [{
+    Lower level representation of Einsum ops.
+    Does not perform any computation; purely symbolic.
+  }];
+
+  // Variadic inputs of
+  let arguments = (ins
+      Variadic<Builtin_RankedTensor>:$inputs,
+      StrAttr:$equation, // original einsum equation string
+      AffineMapArrayAttr:$indexing_maps, // affine maps per operand and output
+      ArrayAttr:$iterator_types // parallel/reduction per loop iterator
+      );
+
+  // Single output of NamedAxesTensorType
+  let results = (outs Builtin_RankedTensor:$output);
+
+  let assemblyFormat = [{
+    `(` $inputs `:` type($inputs) `)`
+    attr-dict 
+    `->` type($output)
+  }];
+
+}
+
 #endif // LIB_DIALECT_EINSUM_EINSUMOPS_TD_
