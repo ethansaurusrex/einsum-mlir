@@ -13,7 +13,7 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 include "lib/Dialect/Einsum/EinsumDialect.td" 
 include "lib/Dialect/Einsum/EinsumTypes.td"
 
-def EinsumOp : Op<EinsumDialect, "op", [NoMemoryEffect]> {
+def EinsumOp : Op<EinsumDialect, "hl", [NoMemoryEffect]> {
   let summary = "High-level symbolic einsum operation";
   let description = [{
     Accepts N input tensors and an equation string.
