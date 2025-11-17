@@ -1,3 +1,6 @@
+#ifndef LIB_DIALECT_EINSUM_EINSUMDIALECT_TD_
+#define LIB_DIALECT_EINSUM_EINSUMDIALECT_TD_
+
 // lib/Dialect/Einsum/EinsumOps.td
 
 include "mlir/IR/DialectBase.td"
@@ -15,3 +18,5 @@ def EinsumDialect : Dialect {
 
   let useDefaultTypePrinterParser = 1;  
 }
+
+#endif // LIB_DIALECT_EINSUM_EINSUMDIALECT_TD_
