@@ -23,8 +23,8 @@ add_mlir_doc(EinsumDialect EinsumDialect Einsum/ -gen-dialect-doc)
 
 # ---- Build Dialect Library ----
 add_mlir_dialect_library(MLIREinsum
-  EinsumDialect.cpp    # You must create this file
-  #EinsumOps.cpp        # You must create this file
+  EinsumDialect.cpp    
+  EinsumOps.cpp        
 
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/lib/Dialect/Einsum

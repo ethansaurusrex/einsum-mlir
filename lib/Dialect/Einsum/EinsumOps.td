@@ -15,7 +15,7 @@ include "lib/Dialect/Einsum/EinsumTypes.td"
 
 class EinsumOp<string mnemonic, list<Trait> traits = []>:
       		      Op<EinsumDialect, mnemonic, traits> {
-  let cppNamespace = "::mlir::Einsum";
+  let cppNamespace = "::mlir::einsum";
 }
 
 def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
@@ -36,6 +36,8 @@ def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
   // Attributes: a string specifying the einsum equation
   let assemblyFormat = "`(` $inputs `:` type($inputs) `)` attr-dict `->` type($output)";
 
+  // Verifier for checking dim sizes
+  let hasVerifier=1;
 }
 
 #endif // LIB_DIALECT_EINSUM_EINSUMOPS_TD_
