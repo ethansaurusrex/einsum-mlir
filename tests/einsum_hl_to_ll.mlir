@@ -17,4 +17,5 @@ module {
 // CHECK: #map1 = affine_map<(d0, d1, d2) -> (d2, d1)>
 // CHECK: #map2 = affine_map<(d0, d1, d2) -> (d0, d1)> 
 // CHECK: einsum.ll
-// CHECK-SAME: iterator_types = ["parallel", "parallel", "reduction"]  
+// CHECK-SAME: iterator_types = ["parallel", "parallel", "reduction"]
+// CHECK-SAME: loop_order = ["i", "j", "k"]  

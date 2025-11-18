@@ -33,7 +33,8 @@ namespace mlir::einsum {
     std::tie(lhsPart, rhsPart) = equation.split("->");
     
     // now, lhsPart = "ik,kj", rhsPart = "ij"
-    if (lhsPart.empty() || rhsPart.empty())
+    // note: rhs can be empty: ij-> (sum), ii-> (trace)
+    if (lhsPart.empty())
       return emitOpError("expected einsum equation of the form 'LHS->RHS'");
     
     SmallVector<StringRef, 4> inputAxisStrings;

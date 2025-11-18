@@ -218,12 +218,14 @@ namespace {
       
       ArrayAttr mapsAttr = rewriter.getAffineMapArrayAttr(affineMaps);      
 
-      auto loopOrderAttr = [&]() {
-        SmallVector<StringRef> refs;
-        llvm::transform(loopOrder, std::back_inserter(refs),
-                        [](char c) { return StringRef(&c, 1); });
-        return rewriter.getStrArrayAttr(refs);
-      }();
+      SmallVector<Attribute> loopOrderAttrs;
+      loopOrderAttrs.reserve(loopOrder.size());
+
+      for (char c : loopOrder) {
+        loopOrderAttrs.push_back(rewriter.getStringAttr(StringRef(&c, 1)));
+      }
+
+      ArrayAttr loopOrderAttr = rewriter.getArrayAttr(loopOrderAttrs);
       
       auto llOp = EinsumLL::create(b,
                                    op.getResult().getType(),
