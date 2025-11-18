@@ -222,11 +222,6 @@ namespace {
                                        outputRT);
       
       ArrayAttr mapsAttr = rewriter.getAffineMapArrayAttr(affineMaps);      
-
-      auto outputCast =  UnrealizedConversionCastOp::create(b,
-                                                        outputRT,
-                                                        op.getOutput());
-      Value llOutput = outputCast.getResult(0);
       
       auto llOp = EinsumLL::create(b,
                                    outputRT,
@@ -234,8 +229,17 @@ namespace {
                                    rewriter.getStringAttr(equation),
                                    mapsAttr,
                                    iteratorTypesAttr);
+      Value llOutput = llOp.getResult();
+
+      // Cast back to the original HL type
+      auto returnCast = UnrealizedConversionCastOp::create(b,
+                                                     op.getOutput().getType(),
+                                                     llOutput);
+      Value namedOutput = returnCast.getResult(0);
+      
+      // Replace original HL op with final value
+      rewriter.replaceOp(op, namedOutput);
                                             
-      rewriter.replaceOp(op, llOp.getResult());
       return success();
     }
   };

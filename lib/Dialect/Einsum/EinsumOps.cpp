@@ -15,13 +15,13 @@ namespace mlir::einsum {
     for (auto input : getInputs()) {
       auto natType = dyn_cast<NamedAxesTensorTypeType>(input.getType());
       if(!natType)
-	return emitOpError("operand is not a NamedAxesTensorType");
+        return emitOpError("operand is not a NamedAxesTensorType");
       auto tensorType = dyn_cast<RankedTensorType>(natType.getTensorType());
       auto elemType = tensorType.getElementType();
       if (!firstElemType)
-	firstElemType = elemType;
+        firstElemType = elemType;
       else if (firstElemType != elemType)
-	return emitOpError("all input tensors must have the same element type");
+        return emitOpError("all input tensors must have the same element type");
     }
 
     // 2) check that dimensions align according to equation
@@ -31,7 +31,7 @@ namespace mlir::einsum {
     
     StringRef lhsPart, rhsPart;
     std::tie(lhsPart, rhsPart) = equation.split("->");
-
+    
     // now, lhsPart = "ik,kj", rhsPart = "ij"
     if (lhsPart.empty() || rhsPart.empty())
       return emitOpError("expected einsum equation of the form 'LHS->RHS'");
