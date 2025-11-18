@@ -12,6 +12,7 @@ set(LIBS
     MLIRRegisterAllDialects
     MLIRPass
     MLIREinsum
+    EinsumPasses
 )
 
 # Create the executable
