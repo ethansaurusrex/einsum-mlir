@@ -15,9 +15,9 @@ set(LLVM_TARGET_DEFINITIONS EinsumOps.td)
 mlir_tablegen(EinsumOps.h.inc -gen-op-decls)
 mlir_tablegen(EinsumOps.cpp.inc -gen-op-defs)
 
-add_public_tablegen_target(MLIREinsumIncGen)
+add_public_tablegen_target(MLIREinsumOpsIncGen)
 
-add_dependencies(mlir-headers MLIREinsumIncGen)
+add_dependencies(mlir-headers MLIREinsumOpsIncGen)
 
 add_mlir_doc(EinsumDialect EinsumDialect Einsum/ -gen-dialect-doc)
 

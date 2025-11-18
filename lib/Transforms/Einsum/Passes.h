@@ -1,6 +1,7 @@
 #ifndef LIB_TRANSFORMS_EINSUM_PASSES_H_
 #define LIB_TRANSFORMS_EINSUM_PASSES_H_
 
+#include "lib/Transforms/Einsum/EinsumHLToLL.h"
 #include "mlir/Pass/Pass.h"
 
 namespace mlir::einsum {
@@ -10,4 +11,4 @@ namespace mlir::einsum {
 
 } // namespace mlir::einsum
 
-#endif // LIB_TRANSFORMS_EINSUMPASSES_H_
+#endif // LIB_TRANSFORMS_EINSUM_PASSES_H_

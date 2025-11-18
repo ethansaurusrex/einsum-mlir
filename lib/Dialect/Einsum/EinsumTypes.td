@@ -14,8 +14,8 @@ include "mlir/Interfaces/InferTypeOpInterface.td"
 
 include "lib/Dialect/Einsum/EinsumDialect.td"
 
-def NamedAxesTensorType
-    : TypeDef<EinsumDialect, "NamedAxesTensorType"> {
+def NamedAxesTensor
+    : TypeDef<EinsumDialect, "NamedAxesTensor"> {
   let summary = "Tensor type with optional named axes";
   let description = [{
     A tensor type that stores:
