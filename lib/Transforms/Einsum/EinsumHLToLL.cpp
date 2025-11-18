@@ -29,7 +29,7 @@ namespace {
     
     StringRef lhs, rhs;
     std::tie(lhs, rhs) = equation.split("->");
-    if (lhs.empty() || rhs.empty())
+    if (lhs.empty())
       return failure();
     
     lhs.split(inputSubs, ',');
