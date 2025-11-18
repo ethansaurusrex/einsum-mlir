@@ -53,7 +53,8 @@ def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
       Variadic<NamedAxesTensor>:$inputs,
       StrAttr:$equation, // original einsum equation string
       AffineMapArrayAttr:$indexing_maps, // affine maps per operand and output
-      ArrayAttr:$iterator_types // parallel/reduction per loop iterator
+      ArrayAttr:$iterator_types, // parallel/reduction per loop iterator
+      ArrayAttr:$loop_order // loop order of the subscripts
       );
 
   // Single output of NamedAxesTensor

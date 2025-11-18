@@ -217,13 +217,22 @@ namespace {
                                        outputRT);
       
       ArrayAttr mapsAttr = rewriter.getAffineMapArrayAttr(affineMaps);      
+
+      auto loopOrderAttr = [&]() {
+        SmallVector<StringRef> refs;
+        llvm::transform(loopOrder, std::back_inserter(refs),
+                        [](char c) { return StringRef(&c, 1); });
+        return rewriter.getStrArrayAttr(refs);
+      }();
       
       auto llOp = EinsumLL::create(b,
                                    op.getResult().getType(),
                                    op.getInputs(),
                                    rewriter.getStringAttr(equation),
                                    mapsAttr,
-                                   iteratorTypesAttr);
+                                   iteratorTypesAttr,
+                                   loopOrderAttr);
+      
       Value llOutput = llOp.getResult();
 
       // Replace original HL op with final value
