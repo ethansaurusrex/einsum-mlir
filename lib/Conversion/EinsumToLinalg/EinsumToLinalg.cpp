@@ -72,19 +72,12 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       inputTensors.push_back(rankedTy);
     }
 
-
     // get output RankTensorType
     auto *tc = this->getTypeConverter();
     Type convertedOut = tc->convertType(op.getResult().getType());
     auto outputType = dyn_cast<RankedTensorType>(convertedOut);
     if (!outputType)
       return op.emitOpError("expected output to convert to RankedTensorType");
-    /*
-    RankedTensorType outputType = dyn_cast<RankedTensorType>(adaptor.getOutput().getType());
-    auto t = dyn_cast<RankedTensorType>(op.getResult().getType());
-    if (!outputType)
-      return op.emitOpError("expected output to be RankedTensorType");
-    */
 
     // get the loop  order attribute for affine 
     ArrayAttr loopOrderAttr = op.getLoopOrder();
@@ -196,12 +189,6 @@ struct EinsumToLinalg : impl::EinsumToLinalgBase<EinsumToLinalg> {
       module->dump();      
       signalPassFailure();
     }
-    // TODO: implement lowering from einsum.ll -> linalg.generic
-    // Steps will include:
-    // 1. Define a ConversionTarget marking einsum.ll ops as illegal.
-    // 2. Define a TypeConverter converting NamedAxesTensorType -> RankedTensorType.
-    // 3. Add OpConversionPattern(s) for einsum.ll ops.
-    // 4. Apply the partial conversion on the module.
   }
 };
 
