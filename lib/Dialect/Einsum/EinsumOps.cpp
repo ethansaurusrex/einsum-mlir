@@ -13,7 +13,7 @@ namespace mlir::einsum {
   LogicalResult EinsumHL::verify() {
     Type firstElemType;
     for (auto input : getInputs()) {
-      auto natType = dyn_cast<NamedAxesTensorTypeType>(input.getType());
+      auto natType = dyn_cast<NamedAxesTensorType>(input.getType());
       if(!natType)
         return emitOpError("operand is not a NamedAxesTensorType");
       auto tensorType = dyn_cast<RankedTensorType>(natType.getTensorType());
@@ -44,7 +44,7 @@ namespace mlir::einsum {
     
     // 3) check each NamedAxesTensorType has matching axis count
     for (size_t i = 0; i < getInputs().size(); ++i) {
-      auto natType = dyn_cast<NamedAxesTensorTypeType>(getInputs()[i].getType());
+      auto natType = dyn_cast<NamedAxesTensorType>(getInputs()[i].getType());
       auto tensorType = dyn_cast<RankedTensorType>(natType.getTensorType());
       auto axisNames = natType.getAxisNames();
       auto shape = tensorType.getShape();
@@ -81,11 +81,11 @@ namespace mlir::einsum {
 	continue;
 
       // reference dimension
-      size_t refDim = dyn_cast<RankedTensorType>(dyn_cast<NamedAxesTensorTypeType>(getInputs()[locations[0].first].getType()).getTensorType()).getShape()[locations[0].second];
+      size_t refDim = dyn_cast<RankedTensorType>(dyn_cast<NamedAxesTensorType>(getInputs()[locations[0].first].getType()).getTensorType()).getShape()[locations[0].second];
       
       // compare with all other tensors
       for (size_t i = 1; i < locations.size(); ++i) {
-	size_t dim = dyn_cast<RankedTensorType>(dyn_cast<NamedAxesTensorTypeType>(getInputs()[locations[i].first].getType()).getTensorType()).getShape()[locations[i].second];
+	size_t dim = dyn_cast<RankedTensorType>(dyn_cast<NamedAxesTensorType>(getInputs()[locations[i].first].getType()).getTensorType()).getShape()[locations[i].second];
      
 	if (dim != refDim)
 	  return emitOpError() << "dimension mismatch for contracted axis '"

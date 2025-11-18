@@ -27,11 +27,11 @@ def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
 
   // Variadic inputs of NamedAxesTensorType
   let arguments = (ins
-      Variadic<NamedAxesTensorType>:$inputs,      
+      Variadic<NamedAxesTensor>:$inputs,      
       StrAttr:$equation);
 
-  // Single output of NamedAxesTensorType
-  let results = (outs NamedAxesTensorType:$output);
+  // Single output of NamedAxesTensor
+  let results = (outs NamedAxesTensor:$output);
 
   // Attributes: a string specifying the einsum equation
   let assemblyFormat = "`(` $inputs `:` type($inputs) `)` attr-dict `->` type($output)";
@@ -50,14 +50,14 @@ def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
 
   // Variadic inputs of
   let arguments = (ins
-      Variadic<NamedAxesTensorType>:$inputs,
+      Variadic<NamedAxesTensor>:$inputs,
       StrAttr:$equation, // original einsum equation string
       AffineMapArrayAttr:$indexing_maps, // affine maps per operand and output
       ArrayAttr:$iterator_types // parallel/reduction per loop iterator
       );
 
-  // Single output of NamedAxesTensorType
-  let results = (outs NamedAxesTensorType:$output);
+  // Single output of NamedAxesTensor
+  let results = (outs NamedAxesTensor:$output);
 
   let assemblyFormat = [{
     `(` $inputs `:` type($inputs) `)`

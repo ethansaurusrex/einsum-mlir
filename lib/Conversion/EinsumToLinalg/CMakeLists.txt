@@ -23,6 +23,7 @@ add_mlir_library(EinsumToLinalg
 
   LINK_LIBS PUBLIC
   MLIREinsum
+  MLIRLinalgDialect
   MLIRArithDialect
   MLIRFuncDialect
   MLIRFuncTransforms

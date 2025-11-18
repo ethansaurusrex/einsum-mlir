@@ -38,7 +38,7 @@ namespace {
   }
 
   static std::optional<RankedTensorType> getRankedTensorTypeFromNamed(Value v) {
-    if(auto natType = dyn_cast<NamedAxesTensorTypeType>(v.getType()) )
+    if(auto natType = dyn_cast<NamedAxesTensorType>(v.getType()) )
       return dyn_cast<RankedTensorType>(natType.getTensorType());
     if(auto rType = dyn_cast<RankedTensorType>(v.getType()) )
       return rType;
