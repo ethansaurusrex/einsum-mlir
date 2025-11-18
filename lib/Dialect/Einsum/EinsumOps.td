@@ -50,14 +50,14 @@ def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
 
   // Variadic inputs of
   let arguments = (ins
-      Variadic<Builtin_RankedTensor>:$inputs,
+      Variadic<NamedAxesTensorType>:$inputs,
       StrAttr:$equation, // original einsum equation string
       AffineMapArrayAttr:$indexing_maps, // affine maps per operand and output
       ArrayAttr:$iterator_types // parallel/reduction per loop iterator
       );
 
   // Single output of NamedAxesTensorType
-  let results = (outs Builtin_RankedTensor:$output);
+  let results = (outs NamedAxesTensorType:$output);
 
   let assemblyFormat = [{
     `(` $inputs `:` type($inputs) `)`

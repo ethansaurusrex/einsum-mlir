@@ -165,11 +165,6 @@ namespace {
         if(!maybeRT)
           return op.emitOpError("input is not a RankedTensorType or NamedAxesTensorType");
         inputTensors.push_back(*maybeRT);
-
-        auto castOp =  UnrealizedConversionCastOp::create(b,
-                                                          *maybeRT,
-                                                          v);
-        castedInputs.push_back(castOp.getResult(0));
       }
 
       // quick check that num input subs == num inputs
@@ -224,21 +219,15 @@ namespace {
       ArrayAttr mapsAttr = rewriter.getAffineMapArrayAttr(affineMaps);      
       
       auto llOp = EinsumLL::create(b,
-                                   outputRT,
-                                   castedInputs,
+                                   op.getResult().getType(),
+                                   op.getInputs(),
                                    rewriter.getStringAttr(equation),
                                    mapsAttr,
                                    iteratorTypesAttr);
       Value llOutput = llOp.getResult();
 
-      // Cast back to the original HL type
-      auto returnCast = UnrealizedConversionCastOp::create(b,
-                                                     op.getOutput().getType(),
-                                                     llOutput);
-      Value namedOutput = returnCast.getResult(0);
-      
       // Replace original HL op with final value
-      rewriter.replaceOp(op, namedOutput);
+      rewriter.replaceOp(op, llOutput);
                                             
       return success();
     }
