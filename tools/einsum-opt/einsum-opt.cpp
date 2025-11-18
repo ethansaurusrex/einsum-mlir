@@ -1,3 +1,4 @@
+#include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
 #include "lib/Dialect/Einsum/EinsumDialect.h"
 #include "lib/Transforms/Einsum/Passes.h"
 #include "mlir/IR/MLIRContext.h"
@@ -12,6 +13,7 @@ int main(int argc, char **argv) {
   mlir::registerAllDialects(registry);
 
   mlir::einsum::registerEinsumPasses();
+  mlir::einsum::registerEinsumToLinalgPasses();
   
   return mlir::asMainReturnCode(
 				mlir::MlirOptMain(argc, argv, "Einsum MLIR optimizer\n", registry));
