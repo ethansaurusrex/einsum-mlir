@@ -41,11 +41,8 @@ static Value createInitTensor(ImplicitLocOpBuilder &b, RankedTensorType outType)
   Value empty =
     tensor::EmptyOp::create(b, outType.getShape(), outType.getElementType());
 
-  llvm::errs() << "Created empty ouput tensor: " << empty << "\n";
-
   // get constant zero & zero fill
   Value zero = arith::ConstantOp::create(b, b.getZeroAttr(outType.getElementType()));
-  llvm::errs() << "Created zero-fill ouput tensor: " << zero << "\n";
   return linalg::FillOp::create(b, zero, empty).getResult(0);
 }
 
@@ -66,19 +63,15 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       EinsumLL op, EinsumLL::Adaptor adaptor,
       ConversionPatternRewriter &rewriter) const override {
 
-    llvm::errs() << "Trying to convert einsum.ll: " << op << "\n";
-
     // get input RankTensorType
     SmallVector<RankedTensorType, 4> inputTensors;
     for (Value v : adaptor.getInputs()) {
-      llvm::errs() << "Value: " << v << "\n";
       auto rankedTy = dyn_cast<RankedTensorType>(v.getType());
       if (!rankedTy)
         return op.emitOpError("expected RankedTensorType after type conversion");
       inputTensors.push_back(rankedTy);
     }
 
-    llvm::errs() << "Extracted inputTensors\n";
 
     // get output RankTensorType
     auto *tc = this->getTypeConverter();
@@ -92,8 +85,6 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
     if (!outputType)
       return op.emitOpError("expected output to be RankedTensorType");
     */
-
-    llvm::errs() << "Extracted outputType: " << outputType << "\n";
 
     // get the loop  order attribute for affine 
     ArrayAttr loopOrderAttr = op.getLoopOrder();
@@ -129,8 +120,6 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
     ImplicitLocOpBuilder b(op.getLoc(), rewriter);
 
     Value init = createInitTensor(b, outputType);
-
-    llvm::errs() << "Initialized output tensor: " << init << "\n";
 
     auto generic = linalg::GenericOp::create
       (b,
