@@ -41,7 +41,8 @@ declare_mlir_python_extension(EinsumPythonExtension.Extension
   SOURCES
     EinsumModule.cpp
   EMBED_CAPI_LINK_LIBS
-    MLIREinsum
+    MLIREinsumCAPI
+    MLIRPythonCAPI
   PRIVATE_LINK_LIBS
     LLVMSupport
 )
@@ -56,7 +57,6 @@ add_mlir_python_modules(EinsumPythonModules
   DECLARED_SOURCES
     EinsumPythonBindings
   COMMON_CAPI_LINK_LIBS
-    MLIRPythonCAPI
     MLIRPythonSources
 )
 
