@@ -10,6 +10,8 @@ mkdir -p "$BUILD_DIR" "$INSTALL_DIR"
 
 pushd "$BUILD_DIR"
 
+GCC_STDLIB_DIR="$(dirname "$(gcc -print-file-name=libstdc++.a)")"
+
 # --- Build type: Release / Debug / RelWithDebInfo ---
 BUILD_TYPE=${BUILD_TYPE:-Release}
 
@@ -25,7 +27,8 @@ cmake -G Ninja ../llvm \
     -DLLVM_ENABLE_LLD=ON \
     -DLLVM_CCACHE_BUILD=ON \
     -DMLIR_INCLUDE_INTEGRATION_TESTS=ON \
-    -DLLVM_USE_SPLIT_DWARF=ON
+    -DMLIR_ENABLE_BINDINGS_PYTHON=ON \
+    -DPython3_EXECUTABLE="$HOME/.venv/einsum_mlir/bin/python"
 
 # --- Build LLVM + MLIR and run MLIR tests ---
 cmake --build . --target check-mlir

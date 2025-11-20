@@ -31,4 +31,5 @@ add_mlir_dialect_library(MLIREinsum
 
   LINK_LIBS PUBLIC
   MLIRIR
+  MLIRSupport
   )
