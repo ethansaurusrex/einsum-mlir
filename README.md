@@ -7,6 +7,18 @@ This repository implements an **Einsum** dialect within MLIR, providing a series
 This project uses **CMake** and **Ninja**.  
 You may either use your own LLVM/MLIR build or let the provided script build one.
 
+### Prerequisites
+
+It is strongly recommended by MLIR to use a python virtual environment when building python bindings:
+
+```
+python -m venv ~/.venv/einsum_mlir
+source ~/.venv/einsum_mlir/bin/activate
+```
+
+The bindings will be built using the `scripts/build_llvm.sh` script (see [Build](#2-build))
+
+
 ### 1. Clone the repository
 
 #### **If you do *not* already have `llvm-project`**
