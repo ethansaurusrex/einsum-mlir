@@ -1,15 +1,20 @@
 # python/einsum_mlir/dialects/einsum.py
 
-# 1. Import the auto-generated ODS classes
+# Import the generated module itself. We will use this to qualify _Dialect.
+from . import _einsum_ops_gen as eog
+
+# Import all generated symbols for convenience and re-exporting.
+# This brings EinsumHL into the local scope, which is needed for the class definition.
 from ._einsum_ops_gen import *
 
 # 2. Extend the ODS classes if needed (Optional)
-# The docs show how to use @_cext.register_operation to extend functionality.
-# For example, if you wanted a custom builder for EinsumHL:
 
 from mlir.dialects._ods_common import _cext as _ods_cext
 
-@_ods_cext.register_operation(_Dialect, replace=True)
+
+# Fix: Use the qualified name (_einsum_ops_gen._Dialect) to explicitly reference
+# the dialect class, resolving the NameError during decorator processing.
+@_ods_cext.register_operation(eog._Dialect, replace=True)
 class EinsumHL(EinsumHL):
     # We can add convenience methods here in the future
     pass
