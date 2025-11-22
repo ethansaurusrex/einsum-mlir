@@ -33,5 +33,3 @@ add_mlir_dialect_library(MLIREinsum
   MLIRIR
   MLIRSupport
   )
-
-add_subdirectory(CAPI)

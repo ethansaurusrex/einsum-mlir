@@ -26,28 +26,14 @@ add_subdirectory(tests)
 
 option(EINSUM_ENABLE_PYTHON_BINDINGS "Enable building Python bindings" ON)
 
-if(EINSUM_ENABLE_PYTHON_BINDINGS)
-  find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
-
-  execute_process(
-    COMMAND "${Python3_EXECUTABLE}" -c "import pybind11; print(pybind11.get_cmake_dir())"
-    OUTPUT_VARIABLE PYBIND11_CMAKE_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-  )
-
-  if(PYBIND11_CMAKE_DIR)
-    message(STATUS "Found pybind11 CMake dir: ${PYBIND11_CMAKE_DIR}")
-    list(APPEND CMAKE_PREFIX_PATH "${PYBIND11_CMAKE_DIR}")
-  endif()
-
-  find_package(pybind11 2.6 CONFIG)
-
-  list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
-  list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-  include(AddMLIRPython)
-
-  add_subdirectory(python)
-
-  message(STATUS "Einsum: Python bindings enabled.")
+if(MLIR_ENABLE_BINDINGS_PYTHON)
+  include(MLIRDetectPythonEnv)
+  mlir_configure_python_dev_packages()
 endif()
+
+if(MLIR_ENABLE_BINDINGS_PYTHON)
+  message(STATUS "Enabling Python API")
+  add_subdirectory(python)
+endif()
+
+
