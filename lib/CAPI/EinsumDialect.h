@@ -1,5 +1,5 @@
-#ifndef LIB_CAPI_DIALECT_H
-#define LIB_CAPI_DIALECT_H
+#ifndef LIB_CAPI_EINSUMDIALECT_H
+#define LIB_CAPI_EINSUMDIALECT_H
 
 #include "mlir-c/IR.h"
 
@@ -20,4 +20,6 @@ MLIR_CAPI_EXPORTED MlirType mlirEinsumNamedAxesTensorTypeGet(
 }
 #endif
 
-#endif // LIB_CAPI_DIALECT_H
+//#include "lib/Transforms/Einsum/Passes.capi.h.inc"
+
+#endif // LIB_CAPI_EINSUMDIALECT_H

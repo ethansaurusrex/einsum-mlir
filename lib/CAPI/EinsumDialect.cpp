@@ -1,4 +1,4 @@
-#include "lib/CAPI/Dialect.h"
+#include "lib/CAPI/EinsumDialect.h"
 #include "mlir/CAPI/Registration.h"
 #include "lib/Dialect/Einsum/EinsumDialect.h"
 #include "mlir/IR/BuiltinTypes.h"

@@ -1,12 +1,12 @@
-// python/EinsumModule.cpp
+// python/EinsumModulePybind11.cpp
 
 #include "mlir-c/IR.h"
 #include "mlir/Bindings/Python/PybindAdaptors.h"
-#include "lib/CAPI/Dialect.h"
+#include "lib/CAPI/EinsumDialect.h"
 #include "lib/Dialect/Einsum/EinsumDialect.h"
 #include "lib/Dialect/Einsum/EinsumTypes.h"
 #include "lib/Transforms/Einsum/Passes.h"
-#include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
+//#include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
 
 namespace py = pybind11;
 using namespace mlir::einsum;

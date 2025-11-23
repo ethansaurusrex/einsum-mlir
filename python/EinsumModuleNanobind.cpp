@@ -1,13 +1,13 @@
-// python/EinsumModule.cpp
+// python/EinsumModuleNanobind.cpp
 
 #include "mlir-c/IR.h"
 #include "mlir/Bindings/Python/Nanobind.h"
 #include "mlir/Bindings/Python/NanobindAdaptors.h"
-#include "lib/CAPI/Dialect.h"
+#include "lib/CAPI/EinsumDialect.h"
 #include "lib/Dialect/Einsum/EinsumDialect.h"
 #include "lib/Dialect/Einsum/EinsumTypes.h"
 #include "lib/Transforms/Einsum/Passes.h"
-#include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
+//#include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
 
 namespace nb = nanobind;
 using namespace mlir::einsum;
