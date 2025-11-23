@@ -1,19 +1,21 @@
+// python/EinsumModule.cpp
 
 #include "mlir-c/IR.h"
-#include "mlir/Bindings/Python/PybindAdaptors.h"
+#include "mlir/Bindings/Python/Nanobind.h"
+#include "mlir/Bindings/Python/NanobindAdaptors.h"
 #include "lib/CAPI/Dialect.h"
 #include "lib/Dialect/Einsum/EinsumDialect.h"
 #include "lib/Dialect/Einsum/EinsumTypes.h"
 #include "lib/Transforms/Einsum/Passes.h"
 #include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
 
-namespace py = pybind11;
+namespace nb = nanobind;
 using namespace mlir::einsum;
 using namespace mlir::python;
-using namespace mlir::python::adaptors;
+using namespace mlir::python::nanobind_adaptors;
 
 // dialect registration hook
-void populateEinsumDialect(py::module &m) {
+static void populateEinsumDialect(nb::module_ &m) {
   
   
   m.def("register_dialect", [](MlirContext context, bool load) {
@@ -22,7 +24,7 @@ void populateEinsumDialect(py::module &m) {
     if (load) {
       mlirDialectHandleLoadDialect(handle, context);
     }
-  }, py::arg("context"), py::arg("load") = true);
+  }, nb::arg("context"), nb::arg("load") = true);
 }
 /*
     mlir::MLIRContext *cppCtx = unwrap(context);
@@ -31,7 +33,7 @@ void populateEinsumDialect(py::module &m) {
 }
 */
 
-void populateEinsumTypes(py::module &m) {
+static void populateEinsumTypes(nb::module_ &m) {
   // We use mlir_type_subclass, which automatically handles the MlirType
   // lifecycle and registers the CAPI type check function:
   // bool mlirTypeIsAEinsumNamedAxesTensor(MlirType type)
@@ -43,30 +45,30 @@ void populateEinsumTypes(py::module &m) {
   // MlirType mlirEinsumNamedAxesTensorGet(...)
   namedAxesTensorType.def_classmethod(
       "get",
-      [](py::object cls, MlirType tensorType, MlirAttribute axisNames, MlirContext ctx) {
+      [](nb::object cls, MlirType tensorType, MlirAttribute axisNames, MlirContext ctx) {
         // Call the C-API function defined in lib/CAPI/Dialects/Einsum.cpp
         return cls(mlirEinsumNamedAxesTensorTypeGet(
             ctx, tensorType, axisNames));
       },
       "Gets an instance of NamedAxesTensor in the given context.",
-      py::arg("cls"),
-      py::arg("tensor_type"),
-      py::arg("axis_names"),
-      py::arg("context") = py::none());
+      nb::arg("cls"),
+      nb::arg("tensor_type"),
+      nb::arg("axis_names"),
+      nb::arg("context") = nb::none());
 }
 
 // pass registration hook
-void populateEinsumPasses(py::module &m) {
+static void populateEinsumPasses(nb::module_ &m) {
   m.def("register_passes", []() {
-    registerEinsumPasses();
-    registerEinsumToLinalgPasses();
+    //registerEinsumPasses();
+    //registerEinsumToLinalgPasses();
   });
 }
 
 
-PYBIND11_MODULE(_einsum, m) {
+NB_MODULE(_einsumNanobind, m) {
   m.doc() = "Einsum MLIR Dialect Python Bindings";
   populateEinsumDialect(m);
   populateEinsumTypes(m);
-  populateEinsumPasses(m);  
+  //populateEinsumPasses(m);  
 }
