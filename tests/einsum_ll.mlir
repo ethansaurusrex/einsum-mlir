@@ -8,7 +8,7 @@ module {
 		{
 		  equation = "ik,kj->ij",
 		  indexing_maps = [
-		        affine_map<(d0,d1,d2) -> (d0,d2)>,  // A[i,k]
+			      affine_map<(d0,d1,d2) -> (d0,d2)>,  // A[i,k]
 			      affine_map<(d0,d1,d2) -> (d2,d1)>,  // B[k,j]
 			      affine_map<(d0,d1,d2) -> (d0,d1)>   // Output[i,j]
     			],

@@ -29,7 +29,7 @@ def mlir_element_type_from_numpy_dtype(dtype):
 
     raise ValueError(f"Unsupported type: {dtype}")
 
-def build_einsum_body(func_op):
+def build_einsum_hl_body(func_op):
     entry_block = func_op.body.blocks[0] 
     arg0: Value = entry_block.arguments[0] # Input A
     arg1: Value = entry_block.arguments[1] # Input B
@@ -93,7 +93,7 @@ def main():
                 func_op = func.FuncOp("main",
                                       fnty,
                                       visibility="public",
-                                      body_builder=build_einsum_body)
+                                      body_builder=build_einsum_hl_body)
             
             print(module)
 
