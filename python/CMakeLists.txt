@@ -24,8 +24,7 @@ declare_mlir_python_extension(EinsumPythonSources.Pybind11Extension
   PRIVATE_LINK_LIBS
     LLVMSupport
   EMBED_CAPI_LINK_LIBS
-
-  MLIRCAPIIR
+    MLIRCAPIIR
     MLIRCAPIArith
     MLIRCAPITransforms
     MLIREinsumCAPI
@@ -48,6 +47,18 @@ declare_mlir_python_extension(EinsumPythonSources.NanobindExtension
     MLIRCAPIRegisterEverything
   PYTHON_BINDINGS_LIBRARY
     nanobind
+)
+
+declare_mlir_python_extension(MLIRPythonSources.PassesNanobindExtension
+  MODULE_NAME _einsumPassesNanobind
+  ADD_TO_PARENT EinsumPythonSources
+  SOURCES
+    EinsumPassesNanobind.cpp
+  PRIVATE_LINK_LIBS
+    LLVMSupport
+  EMBED_CAPI_LINK_LIBS
+    MLIREinsumCAPI
+  PYTHON_BINDINGS_LIBRARY nanobind  
 )  
 
 add_mlir_python_common_capi_library(EinsumPythonCAPI

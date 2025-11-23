@@ -12,7 +12,7 @@ set(LIBS
     MLIRRegisterAllDialects
     MLIRPass
     MLIREinsum
-    EinsumPasses
+    MLIREinsumPasses
     EinsumToLinalg
 )
 

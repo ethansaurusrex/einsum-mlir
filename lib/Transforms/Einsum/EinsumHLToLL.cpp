@@ -241,5 +241,5 @@ namespace {
     }
 };
 
-} // namespace  
+} // namespace
 } // namespace mlir::einsum

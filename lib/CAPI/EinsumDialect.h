@@ -20,6 +20,6 @@ MLIR_CAPI_EXPORTED MlirType mlirEinsumNamedAxesTensorTypeGet(
 }
 #endif
 
-//#include "lib/Transforms/Einsum/Passes.capi.h.inc"
+#include "lib/Transforms/Einsum/Passes.capi.h.inc"
 
 #endif // LIB_CAPI_EINSUMDIALECT_H
