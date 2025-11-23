@@ -13,7 +13,7 @@ set(LIBS
     MLIRPass
     MLIREinsum
     MLIREinsumPasses
-    EinsumToLinalg
+    MLIREinsumToLinalg
 )
 
 # Create the executable
