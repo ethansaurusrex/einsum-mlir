@@ -24,7 +24,8 @@ declare_mlir_python_extension(EinsumPythonSources.Pybind11Extension
   PRIVATE_LINK_LIBS
     LLVMSupport
   EMBED_CAPI_LINK_LIBS
-    MLIRCAPIIR
+
+  MLIRCAPIIR
     MLIRCAPIArith
     MLIRCAPITransforms
     MLIREinsumCAPI
@@ -44,6 +45,7 @@ declare_mlir_python_extension(EinsumPythonSources.NanobindExtension
     MLIRCAPIArith
     MLIRCAPITransforms
     MLIREinsumCAPI
+    MLIRCAPIRegisterEverything
   PYTHON_BINDINGS_LIBRARY
     nanobind
 )  
@@ -57,6 +59,8 @@ add_mlir_python_common_capi_library(EinsumPythonCAPI
     EinsumPythonSources
     MLIRPythonSources.Core
     MLIRPythonSources.Dialects.builtin
+    MLIRCAPIRegisterEverything
+    MLIRPythonSources
 )
 
 set(EinsumPythonModules_ROOT_PREFIX "${CMAKE_BINARY_DIR}/${MLIR_BINDINGS_PYTHON_INSTALL_PREFIX}")
@@ -114,8 +118,8 @@ declare_mlir_python_sources(
 
 set(_declared_sources
   EinsumPythonSources
-  MLIRPythonSources.Core
-  MLIRPythonSources.Dialects.builtin
+  MLIRPythonExtension.RegisterEverything
+  MLIRPythonSources 
 )
 
 
