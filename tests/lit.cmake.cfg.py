@@ -2,6 +2,9 @@ import os
 import lit.formats
 from lit.llvm import llvm_config
 
+print(f"mlir_obj_dir: {config.mlir_obj_dir}")
+print(f"project_binary_dir: {config.project_binary_dir}")
+
 config.name = "EINSUM_TESTS"
 
 config.test_format = lit.formats.ShTest()
@@ -25,3 +28,12 @@ llvm_config.with_environment("PATH", config.llvm_tools_dir, append_path=True)
 tool_dirs = [config.project_tools_dir]
 tools = ["einsum-opt"]
 llvm_config.add_tool_substitutions(tools, tool_dirs)
+
+llvm_config.with_environment(
+    "PYTHONPATH",
+    [
+        os.path.join(config.project_binary_dir, "python_packages"),
+        os.path.join(config.project_binary_dir, "python_packages", "einsum_mlir"),
+    ],
+    append_path=True,
+)

@@ -6,6 +6,7 @@ config.mlir_obj_dir         = lit_config.substitute("@MLIR_BINARY_DIR@")
 config.llvm_shlib_ext       = lit_config.substitute("@SHLIBEXT@")
 config.project_binary_dir   = lit_config.substitute("@PROJECT_BINARY_DIR@")
 config.project_source_dir   = lit_config.substitute("@PROJECT_SOURCE_DIR@")
+config.enable_bindings_python = @MLIR_ENABLE_BINDINGS_PYTHON@
 
 # Import and initialize LLVM/MLIR lit support
 import lit.llvm
