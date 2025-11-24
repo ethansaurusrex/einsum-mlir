@@ -31,12 +31,14 @@ def build_einsum_ll_body(func_op, indexing_maps_attr, iterator_types_attr, loop_
     entry_block = func_op.body.blocks[0]
     arg0: Value = entry_block.arguments[0] # Input A
     arg1: Value = entry_block.arguments[1] # Input B
+    arg2: Value = entry_block.arguments[2] # Output C    
 
     result_type = func_op.type.results[0]
     
     einsum_op = EinsumLL(
         output=result_type,
         inputs=[arg0, arg1],
+        out_operand=arg2,
         equation="ik,kj->ij",
         indexing_maps=indexing_maps_attr,
         iterator_types=iterator_types_attr,
@@ -110,7 +112,7 @@ def main():
             C_tensor_type, C_axis_names_attr
             )        
             
-            fnty = FunctionType.get([A_named_tensor_type, B_named_tensor_type], [C_named_tensor_type])
+            fnty = FunctionType.get([A_named_tensor_type, B_named_tensor_type, C_named_tensor_type], [C_named_tensor_type])
             
             module = Module.create()
 
@@ -138,25 +140,28 @@ if __name__ == "__main__":
 # CHECK: #map1 = affine_map<(d0, d1, d2) -> (d2, d1)>
 # CHECK: #map2 = affine_map<(d0, d1, d2) -> (d0, d1)>
 
-# CHECK-LABEL: func.func public @main
-# CHECK-SAME: (%arg0: tensor<3x4xf64>, %arg1: tensor<4x3xf64>) -> tensor<3x3xf64>
+# CHECK: module {
+# CHECK:   func.func public @main(
+# CHECK-SAME:       %[[ARG0:.*]]: tensor<3x4xf64>,
+# CHECK-SAME:       %[[ARG1:.*]]: tensor<4x3xf64>,
+# CHECK-SAME:       %[[ARG2:.*]]: tensor<3x3xf64>
+# CHECK-SAME:     ) -> tensor<3x3xf64> {
 
-# CHECK: %[[EMPTY:.*]] = tensor.empty() : tensor<3x3xf64>
-# CHECK: %[[CST:.*]] = arith.constant 0.000000e+00 : f64
-# CHECK: %[[FILL:.*]] = linalg.fill ins(%[[CST]] : f64) outs(%[[EMPTY]] : tensor<3x3xf64>) -> tensor<3x3xf64>
+# CHECK:     %[[RES:.*]] = linalg.generic
+# CHECK-SAME:       {indexing_maps = [#map, #map1, #map2],
+# CHECK-SAME:        iterator_types = ["parallel", "parallel", "reduction"]}
+# CHECK-SAME:       ins(%[[ARG0]], %[[ARG1]]
+# CHECK-SAME:           : tensor<3x4xf64>, tensor<4x3xf64>)
+# CHECK-SAME:       outs(%[[ARG2]] : tensor<3x3xf64>)
+# CHECK:       ^bb0(%[[IN:.*]]: f64, %[[IN1:.*]]: f64, %[[OUT:.*]]: f64):
+# CHECK:         %[[MUL:.*]] = arith.mulf %[[IN]], %[[IN1]] : f64
+# CHECK:         %[[ADD:.*]] = arith.addf %[[OUT]], %[[MUL]] : f64
+# CHECK:         linalg.yield %[[ADD]] : f64
+# CHECK:       } -> tensor<3x3xf64>
 
-# CHECK: %[[RESULT:.*]] = linalg.generic
-# CHECK-SAME: indexing_maps = [#map, #map1, #map2]
-# CHECK-SAME: iterator_types = ["parallel", "parallel", "reduction"]
-# CHECK-SAME: ins(%arg0, %arg1 : tensor<3x4xf64>, tensor<4x3xf64>)
-# CHECK-SAME: outs(%[[FILL]] : tensor<3x3xf64>)
-
-# CHECK: ^bb0(%[[IN0:.*]]: f64, %[[IN1:.*]]: f64, %[[OUT:.*]]: f64):
-# CHECK:   %[[MUL:.*]] = arith.mulf %[[IN0]], %[[IN1]] : f64
-# CHECK:   %[[ADD:.*]] = arith.addf %[[OUT]], %[[MUL]] : f64
-# CHECK:   linalg.yield %[[ADD]] : f64
-
-# CHECK: return %[[RESULT]] : tensor<3x3xf64>
+# CHECK:     return %[[RES]] : tensor<3x3xf64>
+# CHECK:   }
+# CHECK: }    
 
 # Verify no einsum ops remain
 # CHECK-NOT: einsum.ll
