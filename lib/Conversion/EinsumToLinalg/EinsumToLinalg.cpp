@@ -28,24 +28,6 @@ public:
   }
 };
 
-static Value createInitTensor(ImplicitLocOpBuilder &b, RankedTensorType outType) {
-  // build the dynamic dims for tensor.empty
-  SmallVector<Value, 4> dims;
-  for (int64_t i = 0; i < outType.getRank(); ++i) {
-    if (outType.isDynamicDim(i)) { // should all be static
-      llvm_unreachable("dynamic dims not yet supported");
-    }
-  }
-
-  // ceate empty output tensor
-  Value empty =
-    tensor::EmptyOp::create(b, outType.getShape(), outType.getElementType());
-
-  // get constant zero & zero fill
-  Value zero = arith::ConstantOp::create(b, b.getZeroAttr(outType.getElementType()));
-  return linalg::FillOp::create(b, zero, empty).getResult(0);
-}
-
 static Value multiplyAll(ImplicitLocOpBuilder &b, ValueRange vals) {
   assert(!vals.empty() && "multiplyAll requires at least one value");
   

@@ -135,7 +135,7 @@ namespace {
     LogicalResult matchAndRewrite(einsum::EinsumHL op,
                                   PatternRewriter &rewriter) const override {
       ImplicitLocOpBuilder b(op.getLoc(), rewriter);
-      
+
       // parse HL op equation
       StringRef equation = op.getEquation();
       SmallVector<StringRef, 4> inputSubs;
@@ -218,16 +218,15 @@ namespace {
       }
 
       ArrayAttr loopOrderAttr = rewriter.getArrayAttr(loopOrderAttrs);
-      
+
       EinsumLL::create(b,                                   
-                                   /*inputs=*/op.getInputs(),
-                                   /*outputs=*/outputOperand,
-				   /*equation=*/rewriter.getStringAttr(equation),
-                                   /*indexing_maps=*/mapsAttr,
-                                   /*iteartor_types=*/iteratorTypesAttr,
-                                   /*loop_order=*/loopOrderAttr);
+		       /*inputs=*/op.getInputs(),
+		       /*outputs=*/outputOperand,
+		       /*equation=*/rewriter.getStringAttr(equation),
+		       /*indexing_maps=*/mapsAttr,
+		       /*iteartor_types=*/iteratorTypesAttr,
+		       /*loop_order=*/loopOrderAttr);
       
-      // Replace original HL op with final value
       rewriter.eraseOp(op);
                                             
       return success();
@@ -237,7 +236,7 @@ namespace {
   struct EinsumHLToLL : impl::EinsumHLToLLBase<EinsumHLToLL> {
     using EinsumHLToLLBase::EinsumHLToLLBase;
       
-    void runOnOperation() {
+    void runOnOperation() override {
       // get rewrite set:
       mlir::RewritePatternSet patterns(&getContext());
       patterns.add<EinsumHLToLLPattern>(&getContext());

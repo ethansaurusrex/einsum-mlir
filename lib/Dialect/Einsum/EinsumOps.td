@@ -18,7 +18,7 @@ class EinsumOp<string mnemonic, list<Trait> traits = []>:
   let cppNamespace = "::mlir::einsum";
 }
 
-def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
+def EinsumHL : EinsumOp<"hl"> {
   let summary = "High-level symbolic einsum operation";
   let description = [{
     Accepts N input tensors and an equation string.
@@ -42,7 +42,7 @@ def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
 }
 
 
-def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
+def EinsumLL : EinsumOp<"ll"> {
   let summary = "Low-level symbolic einsum operation";
   let description = [{
     Lower level representation of Einsum ops.
