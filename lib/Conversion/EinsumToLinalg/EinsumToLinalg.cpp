@@ -56,11 +56,17 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       inputTensors.push_back(rankedTy);
     }
 
-    // get output RankTensorType
-    Value outputOperand = adaptor.getOutput();
-    auto outputType = dyn_cast<RankedTensorType>(outputOperand.getType());
-    if (!outputType)
+    auto *tc = getTypeConverter();
+    Type convertedResult = tc->convertType(op.getResult().getType());
+    auto resultType = dyn_cast<RankedTensorType>(convertedResult);
+    if (!resultType)
       return op.emitOpError("expected output to convert to RankedTensorType");
+
+    // get output RankTensorType
+    Value outputOperand = adaptor.getOutOperand();
+    auto outputOpType = dyn_cast<RankedTensorType>(outputOperand.getType());
+    if (!outputOpType)
+      return op.emitOpError("expected output operand to convert to RankedTensorType");
 
     // get the loop  order attribute for affine 
     ArrayAttr loopOrderAttr = op.getLoopOrder();
@@ -97,7 +103,7 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
 
     auto generic = linalg::GenericOp::create
       (b,
-       TypeRange{},
+       resultType,
        adaptor.getInputs(),
        ValueRange{outputOperand},
        indexingMaps,
@@ -115,8 +121,8 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
 
     if(!generic)
       return op.emitOpError("Failed to create generic op");
-    //rewriter.replaceOp(op, generic.getResults());
-    rewriter.eraseOp(op);
+
+    rewriter.replaceOp(op, generic.getResults());
 
     return success();
   }

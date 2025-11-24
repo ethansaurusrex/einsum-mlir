@@ -219,15 +219,16 @@ namespace {
 
       ArrayAttr loopOrderAttr = rewriter.getArrayAttr(loopOrderAttrs);
 
-      EinsumLL::create(b,                                   
-		       /*inputs=*/op.getInputs(),
-		       /*outputs=*/outputOperand,
-		       /*equation=*/rewriter.getStringAttr(equation),
-		       /*indexing_maps=*/mapsAttr,
-		       /*iteartor_types=*/iteratorTypesAttr,
-		       /*loop_order=*/loopOrderAttr);
+      auto llOp = EinsumLL::create(b,
+				   /*output=*/op.getResult().getType(),
+				   /*inputs=*/op.getInputs(),
+				   /*out_operand=*/outputOperand,
+				   /*equation=*/rewriter.getStringAttr(equation),
+				   /*indexing_maps=*/mapsAttr,
+				   /*iteartor_types=*/iteratorTypesAttr,
+				   /*loop_order=*/loopOrderAttr);
       
-      rewriter.eraseOp(op);
+      rewriter.replaceOp(op, llOp.getResult());
                                             
       return success();
     }

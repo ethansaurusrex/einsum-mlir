@@ -26,13 +26,21 @@ namespace mlir::einsum {
     }
 
      // Also check the output tensor type is NamedAxesTensorType
-    Value output = getOutput();  
+    Value output = getOutOperand();  
     auto outNat = dyn_cast<NamedAxesTensorType>(output.getType());
     if (!outNat)
       return emitOpError("output operand is not a NamedAxesTensorType");
     auto outTensorType = dyn_cast<RankedTensorType>(outNat.getTensorType());
     if (!outTensorType)
       return emitOpError("output is not a ranked NamedAxesTensorType");
+
+    auto resultType = dyn_cast<NamedAxesTensorType>(getOutput().getType());
+    if(!resultType) {
+      return emitOpError("returned result must be NamedAxesTensorType");
+    }
+    if(resultType != outNat) {
+      return emitOpError("output result type must be equal to output operand type");
+    } 
 
     // 2) check that dimensions align according to equation
     auto equation = getEquation();
