@@ -115,7 +115,6 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
 
     if(!generic)
       return op.emitOpError("Failed to create generic op");
-
     //rewriter.replaceOp(op, generic.getResults());
     rewriter.eraseOp(op);
 
