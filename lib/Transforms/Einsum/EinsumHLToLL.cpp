@@ -235,9 +235,17 @@ namespace {
       
     void runOnOperation() {
       // get rewrite set:
+      ModuleOp module = getOperation();  // top-level ModuleOp
       mlir::RewritePatternSet patterns(&getContext());
       patterns.add<EinsumHLToLLPattern>(&getContext());
-      (void)applyPatternsGreedily(getOperation(), std::move(patterns));
+	
+      //mlir::RewritePatternSet patterns(&getContext());
+      //patterns.add<EinsumHLToLLPattern>(&getContext());
+      //(void)applyPatternsGreedily(getOperation(), std::move(patterns));
+
+      for (auto funcOp : module.getOps<func::FuncOp>()) {
+	(void)applyPatternsGreedily(funcOp, std::move(patterns));
+      }
     }
 };
 
