@@ -24,7 +24,7 @@ def NamedAxesTensor
   }];
   // Parameters stored in the TableGen-generated storage
   let parameters = (ins
-      "RankedTensorType":$tensorType,
+      "RankedTensorType":$tensorType,      
       "ArrayAttr":$axisNames);
 
   // Assembly format: <axis1,axis2,...> : f32

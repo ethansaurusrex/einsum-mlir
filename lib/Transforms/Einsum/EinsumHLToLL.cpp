@@ -135,10 +135,12 @@ namespace {
     LogicalResult matchAndRewrite(einsum::EinsumHL op,
                                   PatternRewriter &rewriter) const override {
       ImplicitLocOpBuilder b(op.getLoc(), rewriter);
+      
       // parse HL op equation
       StringRef equation = op.getEquation();
       SmallVector<StringRef, 4> inputSubs;
       StringRef outputSubs;
+      
       if(failed(parseEinsumEquation(equation, inputSubs, outputSubs)))
          return op.emitError("invalid equation attribute, expected 'lhs->rhs' form");
       
@@ -146,6 +148,7 @@ namespace {
       SmallVector<Value, 4> castedInputs;
       SmallVector<RankedTensorType, 4> inputTensors;
       inputTensors.reserve(op.getInputs().size());
+      
       for(Value v : op.getInputs()) {
         auto maybeRT = getRankedTensorTypeFromNamed(v);
         if(!maybeRT)
@@ -157,15 +160,17 @@ namespace {
       // note: above should be checked by EinsumHL::verify()
       if (inputSubs.size() != inputTensors.size()) {
         return op.emitOpError()
-       << "number of input subs (" << inputSubs.size()
-       << ") does not match number of operands (" << inputTensors.size()
-       << ")";
+	  << "number of input subs (" << inputSubs.size()
+	  << ") does not match number of operands (" << inputTensors.size()
+	  << ")";
       }
       
       // get the output RankedTensorType
-      auto maybeRT = getRankedTensorTypeFromNamed(op.getOutput());
+      Value outputOperand = op.getOutput();
+      auto maybeRT = getRankedTensorTypeFromNamed(outputOperand);
       if(!maybeRT)
         return op.emitOpError("output is not a RankedTensorType or NamedAxesTensorType");
+      \
       RankedTensorType outputRT = *maybeRT;
 
       // get paralle and reduction indices
@@ -184,10 +189,9 @@ namespace {
       auto rStr = rewriter.getStringAttr("reduction");
 
       for(char c : loopOrder) {
-        if(llvm::is_contained(parallel, c))
-          iteratorTypes.push_back(pStr);
-        else
-          iteratorTypes.push_back(rStr);
+	iteratorTypes.push_back(
+				llvm::is_contained(parallel, c) ? pStr : rStr
+				);
       }
 
       // now we have iterator type array attr
@@ -202,7 +206,9 @@ namespace {
                                        inputTensors,
                                        outputRT);
       
-      ArrayAttr mapsAttr = rewriter.getAffineMapArrayAttr(affineMaps);      
+      ArrayAttr mapsAttr = rewriter.getAffineMapArrayAttr(affineMaps);
+
+      // build loop order attr
 
       SmallVector<Attribute> loopOrderAttrs;
       loopOrderAttrs.reserve(loopOrder.size());
@@ -213,18 +219,16 @@ namespace {
 
       ArrayAttr loopOrderAttr = rewriter.getArrayAttr(loopOrderAttrs);
       
-      auto llOp = EinsumLL::create(b,
-                                   op.getResult().getType(),
-                                   op.getInputs(),
-                                   rewriter.getStringAttr(equation),
-                                   mapsAttr,
-                                   iteratorTypesAttr,
-                                   loopOrderAttr);
+      EinsumLL::create(b,                                   
+                                   /*inputs=*/op.getInputs(),
+                                   /*outputs=*/outputOperand,
+				   /*equation=*/rewriter.getStringAttr(equation),
+                                   /*indexing_maps=*/mapsAttr,
+                                   /*iteartor_types=*/iteratorTypesAttr,
+                                   /*loop_order=*/loopOrderAttr);
       
-      Value llOutput = llOp.getResult();
-
       // Replace original HL op with final value
-      rewriter.replaceOp(op, llOutput);
+      rewriter.eraseOp(op);
                                             
       return success();
     }

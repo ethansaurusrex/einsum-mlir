@@ -114,17 +114,24 @@ namespace mlir::einsum {
       return emitOpError() << "output rank (" << outAxisNames.size()
 			   << ") does not match RHS rank (" << rhsPart.size() << ")";
     }
-    
+
+
     // (b) Axis names: RHS chars correspond to output axis names 1:1
     for (size_t r = 0; r < rhsPart.size(); ++r) {
       char rhsAxis = rhsPart[r];
-      StringRef outAxis = outAxisNames[r];
+      
+      // axisNames is ArrayRef<Attribute>, so cast
+      auto outAxisAttr = llvm::dyn_cast<StringAttr>(outAxisNames[r]);
+      if (!outAxisAttr)
+	return emitOpError("output axis is not a StringAttr");
+      
+      StringRef outAxis = outAxisAttr.getValue();
       
       if (outAxis.size() != 1 || outAxis[0] != rhsAxis)
 	return emitOpError() << "output axis " << r << " should be '" << rhsAxis
-                           << "' but is '" << outAxis << "'";
+			     << "' but is '" << outAxis << "'";
     }
-    
+
     // (c) Shape consistency
     for (size_t r = 0; r < rhsPart.size(); ++r) {
       char rhsAxis = rhsPart[r];
