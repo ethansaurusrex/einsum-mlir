@@ -12,6 +12,7 @@ namespace mlir::einsum {
 
   LogicalResult EinsumHL::verify() {
     Type firstElemType;
+    auto inputs = getInputs();
     for (auto input : getInputs()) {
       auto natType = dyn_cast<NamedAxesTensorType>(input.getType());
       if(!natType)
@@ -23,6 +24,15 @@ namespace mlir::einsum {
       else if (firstElemType != elemType)
         return emitOpError("all input tensors must have the same element type");
     }
+
+     // Also check the output tensor type is NamedAxesTensorType
+    Value output = getOutput();  
+    auto outNat = dyn_cast<NamedAxesTensorType>(output.getType());
+    if (!outNat)
+      return emitOpError("output operand is not a NamedAxesTensorType");
+    auto outTensorType = dyn_cast<RankedTensorType>(outNat.getTensorType());
+    if (!outTensorType)
+      return emitOpError("output is not a ranked NamedAxesTensorType");
 
     // 2) check that dimensions align according to equation
     auto equation = getEquation();
@@ -93,7 +103,68 @@ namespace mlir::einsum {
 			       << axis << "'";
       }
     }
+
+
+    // === 6) Verify output axis names and shape match RHS ===
+    auto outAxisNames = outNat.getAxisNames();
+    auto outShape = outTensorType.getShape();
     
+    // (a) RHS rank must match output rank
+    if (rhsPart.size() != outAxisNames.size()) {
+      return emitOpError() << "output rank (" << outAxisNames.size()
+			   << ") does not match RHS rank (" << rhsPart.size() << ")";
+    }
+    
+    // (b) Axis names: RHS chars correspond to output axis names 1:1
+    for (size_t r = 0; r < rhsPart.size(); ++r) {
+      char rhsAxis = rhsPart[r];
+      StringRef outAxis = outAxisNames[r];
+      
+      if (outAxis.size() != 1 || outAxis[0] != rhsAxis)
+	return emitOpError() << "output axis " << r << " should be '" << rhsAxis
+                           << "' but is '" << outAxis << "'";
+    }
+    
+    // (c) Shape consistency
+    for (size_t r = 0; r < rhsPart.size(); ++r) {
+      char rhsAxis = rhsPart[r];
+      
+    // Find any input that contains this RHS axis:
+      std::optional<int64_t> chosenDim;
+      
+      for (size_t i = 0; i < inputAxisStrings.size(); ++i) {
+	StringRef axes = inputAxisStrings[i];
+	for (size_t pos = 0; pos < axes.size(); ++pos) {
+
+	  if (axes[pos] != rhsAxis)
+	    continue;
+	  
+	  auto nat = dyn_cast<NamedAxesTensorType>(inputs[i].getType());
+	  auto tType = dyn_cast<RankedTensorType>(nat.getTensorType());
+	  int64_t dim = tType.getShape()[pos];
+	
+	  if (!chosenDim) {
+	    chosenDim = dim;
+	  }
+	  else if (*chosenDim != dim) {
+	    return emitOpError() << "mismatched dimension for output axis '"
+				 << rhsAxis << "'";
+	  }
+	}
+      }
+      
+      if (!chosenDim) {
+	return emitOpError() << "RHS axis '" << rhsAxis
+			     << "' does not appear in any input operand";
+      }
+
+      // Compare against output shape
+      if (outShape[r] != *chosenDim) {
+	return emitOpError() << "output axis '" << rhsAxis << "' has dimension "
+                           << outShape[r] << ", expected " << *chosenDim;
+      }
+    }
+  
     return success();
   }
  

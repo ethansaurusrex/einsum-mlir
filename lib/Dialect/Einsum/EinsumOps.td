@@ -27,14 +27,15 @@ def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
 
   // Variadic inputs of NamedAxesTensorType
   let arguments = (ins
-      Variadic<NamedAxesTensor>:$inputs,      
+      Variadic<NamedAxesTensor>:$inputs,
+      NamedAxesTensor:$output,
       StrAttr:$equation);
 
   // Single output of NamedAxesTensor
-  let results = (outs NamedAxesTensor:$output);
+  let results = (outs);
 
   // Attributes: a string specifying the einsum equation
-  let assemblyFormat = "`(` $inputs `:` type($inputs) `)` attr-dict `->` type($output)";
+  let assemblyFormat = "`ins``(` $inputs `:` type($inputs) `)` `outs``(` $output `:` type($output) `)` attr-dict";
 
   // Verifier for checking dim sizes
   let hasVerifier=1;
@@ -51,6 +52,7 @@ def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
   // Variadic inputs of
   let arguments = (ins
       Variadic<NamedAxesTensor>:$inputs,
+      NamedAxesTensor:$output,
       StrAttr:$equation, // original einsum equation string
       AffineMapArrayAttr:$indexing_maps, // affine maps per operand and output
       ArrayAttr:$iterator_types, // parallel/reduction per loop iterator
@@ -58,12 +60,11 @@ def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
       );
 
   // Single output of NamedAxesTensor
-  let results = (outs NamedAxesTensor:$output);
+  let results = (outs);
 
   let assemblyFormat = [{
-    `(` $inputs `:` type($inputs) `)`
-    attr-dict 
-    `->` type($output)
+    `ins``(` $inputs `:` type($inputs) `)` `outs``(` $output `:` type($output) `)`
+    attr-dict
   }];
 
 }
