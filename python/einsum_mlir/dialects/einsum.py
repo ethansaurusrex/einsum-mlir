@@ -5,3 +5,4 @@
 from ._einsum_ops_gen import *
 from .._mlir_libs._einsumNanobind import *
 from .._mlir_libs._einsumPassesNanobind import *
+from .._mlir_libs._einsumToLinalgPassesNanobind import *

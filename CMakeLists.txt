@@ -28,6 +28,16 @@ add_subdirectory(tests)
 if(MLIR_ENABLE_BINDINGS_PYTHON)
   message(STATUS "Enabling Python API")
   include(MLIRDetectPythonEnv)
+  execute_process(
+    COMMAND "${Python3_EXECUTABLE}" -c "import pybind11; print(pybind11.get_cmake_dir())"
+    OUTPUT_VARIABLE PYBIND11_CMAKE_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+  )
+  if(PYBIND11_CMAKE_DIR)
+    message(STATUS "Found pybind11 CMake dir: ${PYBIND11_CMAKE_DIR}")
+    list(APPEND CMAKE_PREFIX_PATH "${PYBIND11_CMAKE_DIR}")
+  endif()
   mlir_configure_python_dev_packages()
   # Note: for EXTERNAL_PROJECT_BUILD this must be set from the command line.
   if(NOT MLIR_PYTHON_PACKAGE_PREFIX)

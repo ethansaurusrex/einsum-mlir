@@ -49,11 +49,23 @@ declare_mlir_python_extension(EinsumPythonSources.NanobindExtension
     nanobind
 )
 
-declare_mlir_python_extension(MLIRPythonSources.PassesNanobindExtension
+declare_mlir_python_extension(MLIRPythonSources.EinsumPassesNanobindExtension
   MODULE_NAME _einsumPassesNanobind
   ADD_TO_PARENT EinsumPythonSources
   SOURCES
     EinsumPassesNanobind.cpp
+  PRIVATE_LINK_LIBS
+    LLVMSupport
+  EMBED_CAPI_LINK_LIBS
+    MLIREinsumCAPI
+  PYTHON_BINDINGS_LIBRARY nanobind  
+)
+
+declare_mlir_python_extension(MLIRPythonSources.EinsumToLinalgPassesNanobindExtension
+  MODULE_NAME _einsumToLinalgPassesNanobind
+  ADD_TO_PARENT EinsumPythonSources
+  SOURCES
+    EinsumToLinalgPassesNanobind.cpp
   PRIVATE_LINK_LIBS
     LLVMSupport
   EMBED_CAPI_LINK_LIBS
