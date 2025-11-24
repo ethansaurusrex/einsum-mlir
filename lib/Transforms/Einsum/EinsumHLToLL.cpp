@@ -166,11 +166,11 @@ namespace {
       }
       
       // get the output RankedTensorType
-      Value outputOperand = op.getOutput();
+      Value outputOperand = op.getOutOperand();
       auto maybeRT = getRankedTensorTypeFromNamed(outputOperand);
       if(!maybeRT)
         return op.emitOpError("output is not a RankedTensorType or NamedAxesTensorType");
-      \
+      
       RankedTensorType outputRT = *maybeRT;
 
       // get paralle and reduction indices
