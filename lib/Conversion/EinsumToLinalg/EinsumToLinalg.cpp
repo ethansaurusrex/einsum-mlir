@@ -63,6 +63,8 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       EinsumLL op, EinsumLL::Adaptor adaptor,
       ConversionPatternRewriter &rewriter) const override {
 
+    ImplicitLocOpBuilder b(op.getLoc(), rewriter);
+    
     // get input RankTensorType
     SmallVector<RankedTensorType, 4> inputTensors;
     for (Value v : adaptor.getInputs()) {
@@ -73,9 +75,8 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
     }
 
     // get output RankTensorType
-    auto *tc = this->getTypeConverter();
-    Type convertedOut = tc->convertType(op.getResult().getType());
-    auto outputType = dyn_cast<RankedTensorType>(convertedOut);
+    Value outputOperand = adaptor.getOutput();
+    auto outputType = dyn_cast<RankedTensorType>(outputOperand.getType());
     if (!outputType)
       return op.emitOpError("expected output to convert to RankedTensorType");
 
@@ -87,20 +88,20 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       auto s = cast<StringAttr>(a).str();
       loopOrder.push_back(s.front());
     }
-    unsigned numLoops = loopOrder.size();    
-
 
     ArrayAttr indexingMapsAttr = op.getIndexingMaps();
     SmallVector<AffineMap> indexingMaps;
-    for (Attribute attr : indexingMapsAttr) {
-      indexingMaps.push_back(cast<AffineMapAttr>(attr).getValue());
+    for (Attribute a : indexingMapsAttr) {
+      indexingMaps.push_back(cast<AffineMapAttr>(a).getValue());
     }
 
     // Convert iterator types from ArrayAttr of StringAttr to ArrayRef<utils::IteratorType>
     ArrayAttr iteratorTypesAttr = op.getIteratorTypes();
     SmallVector<utils::IteratorType> iteratorTypes;
-    for (Attribute attr : iteratorTypesAttr) {
-      StringRef str = cast<StringAttr>(attr).getValue();
+    iteratorTypes.reserve(iteratorTypesAttr.size());
+    
+    for (Attribute a : iteratorTypesAttr) {
+      StringRef str = cast<StringAttr>(a).getValue();
       if (str == "parallel") {
         iteratorTypes.push_back(utils::IteratorType::parallel);
       } else if (str == "reduction") {
@@ -110,15 +111,13 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       }
     }
 
-    ImplicitLocOpBuilder b(op.getLoc(), rewriter);
-
-    Value init = createInitTensor(b, outputType);
+    //Value init = createInitTensor(b, outputType);
 
     auto generic = linalg::GenericOp::create
       (b,
-       TypeRange{outputType},
+       TypeRange{},
        adaptor.getInputs(),
-       ValueRange{init},
+       ValueRange{outputOperand},
        indexingMaps,
        iteratorTypes,
        [&](OpBuilder &b, Location loc, ValueRange args) {
@@ -135,7 +134,8 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
     if(!generic)
       return op.emitOpError("Failed to create generic op");
 
-    rewriter.replaceOp(op, generic.getResults());
+    //rewriter.replaceOp(op, generic.getResults());
+    rewriter.eraseOp(op);
 
     return success();
   }
