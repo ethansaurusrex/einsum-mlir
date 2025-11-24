@@ -1,4 +1,7 @@
 # tests/CMakeLists.txt'
+llvm_canonicalize_cmake_booleans(
+        MLIR_ENABLE_BINDINGS_PYTHON
+)
 
 configure_lit_site_cfg(
     ${CMAKE_CURRENT_SOURCE_DIR}/lit.cmake.site.cfg.py.in
@@ -13,7 +16,11 @@ set (EINSUM_TEST_DEPENDS
     FileCheck count not
     mlir-opt
     mlir-runner
-)
+  )
+
+if(MLIR_ENABLE_BINDINGS_PYTHON)
+  list(APPEND STANDALONE_TEST_DEPENDS EinsumPythonModules)
+endif()
 
 add_lit_testsuite(check-einsum "Running Einsum tests"
     ${CMAKE_CURRENT_BINARY_DIR}

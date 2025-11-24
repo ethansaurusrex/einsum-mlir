@@ -79,19 +79,6 @@ namespace {
       }
     }
   }
-  
-  static void buildLoopOrder(ArrayRef<StringRef> inputSubs,
-                             StringRef outputSub,
-                             SmallVector<char, 8> &loopOrder) {
-    SmallVector<char, 8> parallel, reduction;
-    computeParallelAndReductionIndices(inputSubs, outputSub, parallel, reduction);
-    
-    loopOrder.clear();
-    for (char c : parallel)
-      loopOrder.push_back(c);
-    for (char c : reduction)
-      loopOrder.push_back(c);
-  }
                              
 
   static SmallVector<AffineMap, 8>
@@ -117,7 +104,6 @@ namespace {
     // handle inputs
     for(unsigned i = 0; i < inputSubs.size(); ++i) {
       StringRef subs = inputSubs[i];
-      RankedTensorType ttype = inputTensors[i];
       llvm::SmallVector<AffineExpr, 8> exprs;
       exprs.reserve(subs.size());
 
@@ -255,5 +241,5 @@ namespace {
     }
 };
 
-} // namespace  
+} // namespace
 } // namespace mlir::einsum
