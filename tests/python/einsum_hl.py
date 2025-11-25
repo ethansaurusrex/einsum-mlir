@@ -33,12 +33,14 @@ def build_einsum_hl_body(func_op):
     entry_block = func_op.body.blocks[0] 
     arg0: Value = entry_block.arguments[0] # Input A
     arg1: Value = entry_block.arguments[1] # Input B
+    arg2: Value = entry_block.arguments[2] # Input C
 
     result_type = func_op.type.results[0]
     
     einsum_op = EinsumHL(
         output=result_type,
-        inputs=[arg0, arg1], 
+        inputs=[arg0, arg1],
+        out_operand=arg2,
         equation="ik,kj->ij", 
     )
 
@@ -85,7 +87,7 @@ def main():
             C_tensor_type, C_axis_names_attr
             )        
             
-            fnty = FunctionType.get([A_named_tensor_type, B_named_tensor_type], [C_named_tensor_type])
+            fnty = FunctionType.get([A_named_tensor_type, B_named_tensor_type, C_named_tensor_type], [C_named_tensor_type])
             
             module = Module.create()
         
@@ -101,10 +103,10 @@ def main():
 
 if __name__ == "__main__":
     main()
-
+    
 # CHECK: module {
-# CHECK:   func.func public @main(%[[ARG0:.*]]: !einsum.named_axes_tensor<["i", "k"] : tensor<3x4xf64>>, %[[ARG1:.*]]: !einsum.named_axes_tensor<["k", "j"] : tensor<4x3xf64>>) -> !einsum.named_axes_tensor<["i", "j"] : tensor<3x3xf64>> {
-# CHECK:     %[[RES:.*]] = einsum.hl(%[[ARG0]], %[[ARG1]] : !einsum.named_axes_tensor<["i", "k"] : tensor<3x4xf64>>, !einsum.named_axes_tensor<["k", "j"] : tensor<4x3xf64>>) {equation = "ik,kj->ij"} -> <["i", "j"] : tensor<3x3xf64>>
+# CHECK:   func.func public @main(%[[ARG0:.*]]: !einsum.named_axes_tensor<["i", "k"] : tensor<3x4xf64>>, %[[ARG1:.*]]: !einsum.named_axes_tensor<["k", "j"] : tensor<4x3xf64>>, %[[ARG2:.*]]: !einsum.named_axes_tensor<["i", "j"] : tensor<3x3xf64>>) -> !einsum.named_axes_tensor<["i", "j"] : tensor<3x3xf64>> {
+# CHECK:     %[[RES:.*]] = einsum.hl ins(%[[ARG0]], %[[ARG1]] : !einsum.named_axes_tensor<["i", "k"] : tensor<3x4xf64>>, !einsum.named_axes_tensor<["k", "j"] : tensor<4x3xf64>>) outs(%[[ARG2]] : <["i", "j"] : tensor<3x3xf64>>) {equation = "ik,kj->ij"} -> <["i", "j"] : tensor<3x3xf64>>
 # CHECK:     return %[[RES]] : !einsum.named_axes_tensor<["i", "j"] : tensor<3x3xf64>>
 # CHECK:   }
 # CHECK: }

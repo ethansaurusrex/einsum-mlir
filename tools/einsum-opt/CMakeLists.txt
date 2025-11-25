@@ -10,6 +10,7 @@ set(LIBS
     ${conversion_libs}
     MLIROptLib
     MLIRRegisterAllDialects
+    MLIRRegisterAllPasses
     MLIRPass
     MLIREinsum
     MLIREinsumPasses

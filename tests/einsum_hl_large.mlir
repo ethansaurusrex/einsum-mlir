@@ -9,15 +9,17 @@ module {
       %arg1: !einsum.named_axes_tensor<["q","j"]:tensor<4x5xf32>>,   // B
       %arg2: !einsum.named_axes_tensor<["i","j","k","l"]:tensor<3x5x6x7xf32>>, // C
       %arg3: !einsum.named_axes_tensor<["r","k"]:tensor<8x6xf32>>,   // D
-      %arg4: !einsum.named_axes_tensor<["s","l"]:tensor<9x7xf32>>    // E
+      %arg4: !einsum.named_axes_tensor<["s","l"]:tensor<9x7xf32>>,    // E
+      %arg5: !einsum.named_axes_tensor<["p","q","r","s"]:tensor<2x4x8x9xf32>> // outputXS
   ) -> !einsum.named_axes_tensor<["p","q","r","s"]:tensor<2x4x8x9xf32>> {
     
-    %0 = einsum.hl(%arg0, %arg1, %arg2, %arg3, %arg4
+    %0 = einsum.hl ins(%arg0, %arg1, %arg2, %arg3, %arg4
                    : !einsum.named_axes_tensor<["p","i"]:tensor<2x3xf32>>,
                      !einsum.named_axes_tensor<["q","j"]:tensor<4x5xf32>>,
                      !einsum.named_axes_tensor<["i","j","k","l"]:tensor<3x5x6x7xf32>>,
                      !einsum.named_axes_tensor<["r","k"]:tensor<8x6xf32>>,
                      !einsum.named_axes_tensor<["s","l"]:tensor<9x7xf32>>)
+		   outs(%arg5: !einsum.named_axes_tensor<["p","q","r","s"]:tensor<2x4x8x9xf32>>)
          { equation = "pi,qj,ijkl,rk,sl->pqrs" }
          -> !einsum.named_axes_tensor<["p","q","r","s"]:tensor<2x4x8x9xf32>>
     

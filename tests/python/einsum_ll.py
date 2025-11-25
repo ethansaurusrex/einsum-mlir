@@ -32,12 +32,13 @@ def build_einsum_ll_body(func_op, indexing_maps_attr, iterator_types_attr, loop_
     entry_block = func_op.body.blocks[0]
     arg0: Value = entry_block.arguments[0] # Input A
     arg1: Value = entry_block.arguments[1] # Input B
-
+    arg2: Value = entry_block.arguments[2] # Output C
     result_type = func_op.type.results[0]
     
     einsum_op = EinsumLL(
         output=result_type,
         inputs=[arg0, arg1],
+        out_operand=arg2,
         equation="ik,kj->ij",
         indexing_maps=indexing_maps_attr,
         iterator_types=iterator_types_attr,
@@ -111,7 +112,7 @@ def main():
             C_tensor_type, C_axis_names_attr
             )        
             
-            fnty = FunctionType.get([A_named_tensor_type, B_named_tensor_type], [C_named_tensor_type])
+            fnty = FunctionType.get([A_named_tensor_type, B_named_tensor_type, C_named_tensor_type], [C_named_tensor_type])
             
             module = Module.create()
 
@@ -136,9 +137,24 @@ if __name__ == "__main__":
 # CHECK: #map2 = affine_map<(d0, d1, d2) -> (d0, d1)>
 
 # CHECK: module {
-# CHECK:   func.func public @main(%[[ARG0:.*]]: !einsum.named_axes_tensor<["i", "k"] : tensor<3x4xf64>>, %[[ARG1:.*]]: !einsum.named_axes_tensor<["k", "j"] : tensor<4x3xf64>>) -> !einsum.named_axes_tensor<["i", "j"] : tensor<3x3xf64>> {
-# CHECK:     %[[RES:.*]] = einsum.ll(%[[ARG0]], %[[ARG1]]
-# CHECK-SAME:        : !einsum.named_axes_tensor<["i", "k"] : tensor<3x4xf64>>, !einsum.named_axes_tensor<["k", "j"] : tensor<4x3xf64>>) {equation = "ik,kj->ij", indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "parallel", "reduction"], loop_order = ["i", "j", "k"]} -> <["i", "j"] : tensor<3x3xf64>>
+# CHECK:   func.func public @main(
+# CHECK-SAME:    %[[ARG0:.*]]: !einsum.named_axes_tensor<["i", "k"] : tensor<3x4xf64>>,
+# CHECK-SAME:    %[[ARG1:.*]]: !einsum.named_axes_tensor<["k", "j"] : tensor<4x3xf64>>,
+# CHECK-SAME:    %[[ARG2:.*]]: !einsum.named_axes_tensor<["i", "j"] : tensor<3x3xf64>>
+# CHECK-SAME:  ) -> !einsum.named_axes_tensor<["i", "j"] : tensor<3x3xf64>> {
+
+# CHECK:     %[[RES:.*]] = einsum.ll
+# CHECK-SAME:       ins(%[[ARG0]], %[[ARG1]]
+# CHECK-SAME:           : !einsum.named_axes_tensor<["i", "k"] : tensor<3x4xf64>>,
+# CHECK-SAME:             !einsum.named_axes_tensor<["k", "j"] : tensor<4x3xf64>>)
+# CHECK-SAME:       outs(%[[ARG2]]
+# CHECK-SAME:            : <["i", "j"] : tensor<3x3xf64>>)
+# CHECK-SAME:       {equation = "ik,kj->ij",
+# CHECK-SAME:        indexing_maps = [#map, #map1, #map2],
+# CHECK-SAME:        iterator_types = ["parallel", "parallel", "reduction"],
+# CHECK-SAME:        loop_order = ["i", "j", "k"]}
+# CHECK-SAME:       -> <["i", "j"] : tensor<3x3xf64>>
+
 # CHECK:     return %[[RES]] : !einsum.named_axes_tensor<["i", "j"] : tensor<3x3xf64>>
-# CHECK:   }
-# CHECK: }    
+# CHECK: }
+# CHECK: }

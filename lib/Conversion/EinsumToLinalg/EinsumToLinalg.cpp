@@ -28,24 +28,6 @@ public:
   }
 };
 
-static Value createInitTensor(ImplicitLocOpBuilder &b, RankedTensorType outType) {
-  // build the dynamic dims for tensor.empty
-  SmallVector<Value, 4> dims;
-  for (int64_t i = 0; i < outType.getRank(); ++i) {
-    if (outType.isDynamicDim(i)) { // should all be static
-      llvm_unreachable("dynamic dims not yet supported");
-    }
-  }
-
-  // ceate empty output tensor
-  Value empty =
-    tensor::EmptyOp::create(b, outType.getShape(), outType.getElementType());
-
-  // get constant zero & zero fill
-  Value zero = arith::ConstantOp::create(b, b.getZeroAttr(outType.getElementType()));
-  return linalg::FillOp::create(b, zero, empty).getResult(0);
-}
-
 static Value multiplyAll(ImplicitLocOpBuilder &b, ValueRange vals) {
   assert(!vals.empty() && "multiplyAll requires at least one value");
   
@@ -63,6 +45,8 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       EinsumLL op, EinsumLL::Adaptor adaptor,
       ConversionPatternRewriter &rewriter) const override {
 
+    ImplicitLocOpBuilder b(op.getLoc(), rewriter);
+    
     // get input RankTensorType
     SmallVector<RankedTensorType, 4> inputTensors;
     for (Value v : adaptor.getInputs()) {
@@ -72,12 +56,17 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       inputTensors.push_back(rankedTy);
     }
 
-    // get output RankTensorType
-    auto *tc = this->getTypeConverter();
-    Type convertedOut = tc->convertType(op.getResult().getType());
-    auto outputType = dyn_cast<RankedTensorType>(convertedOut);
-    if (!outputType)
+    auto *tc = getTypeConverter();
+    Type convertedResult = tc->convertType(op.getResult().getType());
+    auto resultType = dyn_cast<RankedTensorType>(convertedResult);
+    if (!resultType)
       return op.emitOpError("expected output to convert to RankedTensorType");
+
+    // get output RankTensorType
+    Value outputOperand = adaptor.getOutOperand();
+    auto outputOpType = dyn_cast<RankedTensorType>(outputOperand.getType());
+    if (!outputOpType)
+      return op.emitOpError("expected output operand to convert to RankedTensorType");
 
     // get the loop  order attribute for affine 
     ArrayAttr loopOrderAttr = op.getLoopOrder();
@@ -87,20 +76,20 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       auto s = cast<StringAttr>(a).str();
       loopOrder.push_back(s.front());
     }
-    unsigned numLoops = loopOrder.size();    
-
 
     ArrayAttr indexingMapsAttr = op.getIndexingMaps();
     SmallVector<AffineMap> indexingMaps;
-    for (Attribute attr : indexingMapsAttr) {
-      indexingMaps.push_back(cast<AffineMapAttr>(attr).getValue());
+    for (Attribute a : indexingMapsAttr) {
+      indexingMaps.push_back(cast<AffineMapAttr>(a).getValue());
     }
 
     // Convert iterator types from ArrayAttr of StringAttr to ArrayRef<utils::IteratorType>
     ArrayAttr iteratorTypesAttr = op.getIteratorTypes();
     SmallVector<utils::IteratorType> iteratorTypes;
-    for (Attribute attr : iteratorTypesAttr) {
-      StringRef str = cast<StringAttr>(attr).getValue();
+    iteratorTypes.reserve(iteratorTypesAttr.size());
+    
+    for (Attribute a : iteratorTypesAttr) {
+      StringRef str = cast<StringAttr>(a).getValue();
       if (str == "parallel") {
         iteratorTypes.push_back(utils::IteratorType::parallel);
       } else if (str == "reduction") {
@@ -110,15 +99,13 @@ struct ConvertEinsumLL : public OpConversionPattern<EinsumLL> {
       }
     }
 
-    ImplicitLocOpBuilder b(op.getLoc(), rewriter);
-
-    Value init = createInitTensor(b, outputType);
+    //Value init = createInitTensor(b, outputType);
 
     auto generic = linalg::GenericOp::create
       (b,
-       TypeRange{outputType},
+       resultType,
        adaptor.getInputs(),
-       ValueRange{init},
+       ValueRange{outputOperand},
        indexingMaps,
        iteratorTypes,
        [&](OpBuilder &b, Location loc, ValueRange args) {

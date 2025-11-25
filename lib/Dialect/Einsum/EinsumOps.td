@@ -18,7 +18,7 @@ class EinsumOp<string mnemonic, list<Trait> traits = []>:
   let cppNamespace = "::mlir::einsum";
 }
 
-def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
+def EinsumHL : EinsumOp<"hl"> {
   let summary = "High-level symbolic einsum operation";
   let description = [{
     Accepts N input tensors and an equation string.
@@ -27,21 +27,23 @@ def EinsumHL : EinsumOp<"hl", [NoMemoryEffect]> {
 
   // Variadic inputs of NamedAxesTensorType
   let arguments = (ins
-      Variadic<NamedAxesTensor>:$inputs,      
+      Variadic<NamedAxesTensor>:$inputs,
+      NamedAxesTensor:$out_operand,
       StrAttr:$equation);
 
   // Single output of NamedAxesTensor
   let results = (outs NamedAxesTensor:$output);
 
+
   // Attributes: a string specifying the einsum equation
-  let assemblyFormat = "`(` $inputs `:` type($inputs) `)` attr-dict `->` type($output)";
+  let assemblyFormat = "`ins``(` $inputs `:` type($inputs) `)` `outs``(` $out_operand `:` type($out_operand) `)` attr-dict `->` type($output)";
 
   // Verifier for checking dim sizes
   let hasVerifier=1;
 }
 
 
-def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
+def EinsumLL : EinsumOp<"ll"> {
   let summary = "Low-level symbolic einsum operation";
   let description = [{
     Lower level representation of Einsum ops.
@@ -51,6 +53,7 @@ def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
   // Variadic inputs of
   let arguments = (ins
       Variadic<NamedAxesTensor>:$inputs,
+      NamedAxesTensor:$out_operand,
       StrAttr:$equation, // original einsum equation string
       AffineMapArrayAttr:$indexing_maps, // affine maps per operand and output
       ArrayAttr:$iterator_types, // parallel/reduction per loop iterator
@@ -58,11 +61,11 @@ def EinsumLL : EinsumOp<"ll", [NoMemoryEffect]> {
       );
 
   // Single output of NamedAxesTensor
-  let results = (outs NamedAxesTensor:$output);
+  let results = (outs NamedAxesTensor:$output);	
 
   let assemblyFormat = [{
-    `(` $inputs `:` type($inputs) `)`
-    attr-dict 
+    `ins``(` $inputs `:` type($inputs) `)` `outs``(` $out_operand `:` type($out_operand) `)`
+    attr-dict
     `->` type($output)
   }];
 
