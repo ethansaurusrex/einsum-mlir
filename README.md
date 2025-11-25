@@ -58,6 +58,12 @@ is either:
 
 These scripts produce out-of-tree builds under `build/`.
 
+### 3. Run Tests
+
+```bash
+cd build-ninja
+ninja check
+```
 
 ## Overview
 
