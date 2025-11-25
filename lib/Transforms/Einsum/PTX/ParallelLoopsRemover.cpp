@@ -1,11 +1,11 @@
-#include "../include/ParallelLoopsRemover.h"
-#include "../include/ParallelLoopsTracker.h"
+#include "lib/Transforms/Einsum/PTX/ParallelLoopsRemover.h"
+#include "lib/Transforms/Einsum/PTX/ParallelLoopsTracker.h"
 
 namespace mlir {
 namespace einsum {
 
 #define GEN_PASS_DEF_PARALLELLOOPSREMOVER
-#include "../include/Passes.h.inc"
+#include "lib/Transforms/Einsum/PTX/Passes.h.inc"
 
 struct ParallelLoopsRemover : impl::ParallelLoopsRemoverBase<ParallelLoopsRemover> {
   using ParallelLoopsRemoverBase::ParallelLoopsRemoverBase;

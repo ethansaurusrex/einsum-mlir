@@ -1,6 +1,6 @@
 
-#ifndef LIB_PARALLEL_LOOPS_REMOVER_H_
-#define LIB_PARALLEL_LOOPS_REMOVER_H_
+#ifndef LIB_TRANSFORMS_EINSUM_PTX_PARALLEL_LOOPS_REMOVER_H_
+#define LIB_TRANSFORMS_EINSUM_PTX_PARALLEL_LOOPS_REMOVER_H_
 
 // Add the required forward declarations as the generated code doesn't contain the include statements
 #include "mlir/Pass/Pass.h"
@@ -18,9 +18,9 @@ namespace einsum {
 
 // #define switches used to add the required components from the generated code
 #define GEN_PASS_DECL_PARALLELLOOPSREMOVER
-#include "../include/Passes.h.inc"
+#include "lib/Transforms/Einsum/PTX/Passes.h.inc"
 
 } // namespace einsum
 } // namespace mlir
 
-#endif // LIB_PARALLEL_LOOPS_REMOVER_H_
+#endif // LIB_TRANSFORMS_EINSUM_PTX_PARALLEL_LOOPS_REMOVER_H_

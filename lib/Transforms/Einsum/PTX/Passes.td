@@ -1,5 +1,5 @@
-#ifndef LIB_PASSES_TD_
-#define LIB_PASSES_TD_
+#ifndef TRANSFORMS_EINSUM_PTX_PASSES_TD_
+#define TRANSFORMS_EINSUM_PTX_PASSES_TD_
 
 include "mlir/Pass/PassBase.td"
 
@@ -23,4 +23,4 @@ def PtxCodegen : Pass<"scf-to-ptx", "ModuleOp"> {
   let dependentDialects = ["mlir::scf::SCFDialect, mlir::arith::ArithDialect", "memref::MemRefDialect", "func::FuncDialect", "mlir::ub::UBDialect"];
 }
 
-#endif  // LIB_PASSES_TD_
+#endif  // TRANSFORMS_EINSUM_PTX_PASSES_TD_

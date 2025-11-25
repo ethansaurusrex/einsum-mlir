@@ -1,6 +1,6 @@
 
-#ifndef LIB_LINEAR_OFFSET_H_
-#define LIB_LINEAR_OFFSET_H_
+#ifndef LIB_TRANSFORMS_EINSUM_PTX_LINEAR_OFFSET_H_
+#define LIB_TRANSFORMS_EINSUM_PTX_LINEAR_OFFSET_H_
 
 // Add the required forward declarations as the generated code doesn't contain the include statements
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
@@ -24,9 +24,9 @@ namespace einsum {
 
 // #define switches used to add the required components from the generated code
 #define GEN_PASS_DECL_LINEAROFFSET
-#include "../include/Passes.h.inc"
+#include "lib/Transforms/Einsum/PTX/Passes.h.inc"
 
 } // namespace einsum
 } // namespace mlir
 
-#endif // LIB_LINEAR_OFFSET_H_
+#endif // LIB_TRANSFORMS_EINSUM_PTX_LINEAR_OFFSET_H_

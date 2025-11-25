@@ -1,10 +1,10 @@
-#include "../include/ParallelLoopsTracker.h"
+#include "lib/Transforms/Einsum/PTX/ParallelLoopsTracker.h"
 
 namespace mlir {
 namespace einsum {
 
 #define GEN_PASS_DEF_PARALLELLOOPSTRACKER
-#include "../include/Passes.h.inc"
+#include "lib/Transforms/Einsum/PTX/Passes.h.inc"
 
 void printParallelLoopInfo(std::tuple<SmallVector<int, 4>, SmallVector<int, 4>, SmallVector<int, 4>> data, raw_ostream &os) {
     auto [lowerBounds, upperBounds, steps] = data;

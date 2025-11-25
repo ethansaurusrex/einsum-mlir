@@ -1,5 +1,5 @@
-#include "../include/PtxCodegen.h"
-#include "../include/ParallelLoopsTracker.h"
+#include "lib/Transforms/Einsum/PTX/PtxCodegen.h"
+#include "lib/Transforms/Einsum/PTX/ParallelLoopsTracker.h"
 
 namespace mlir {
 namespace einsum {
@@ -479,7 +479,7 @@ private:
 };
 
 #define GEN_PASS_DEF_PTXCODEGEN
-#include "../include/Passes.h.inc"
+#include "lib/Transforms/Einsum/PTX/Passes.h.inc"
 
 struct PtxCodegen : impl::PtxCodegenBase<PtxCodegen> {
   using PtxCodegenBase::PtxCodegenBase;

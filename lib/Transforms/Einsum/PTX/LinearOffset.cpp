@@ -1,10 +1,10 @@
-#include "../include/LinearOffset.h"
+#include "lib/Transforms/Einsum/PTX/LinearOffset.h"
 
 namespace mlir {
 namespace einsum {
 
 #define GEN_PASS_DEF_LINEAROFFSET
-#include "../include/Passes.h.inc"
+#include "lib/Transforms/Einsum/PTX/Passes.h.inc"
 
 using namespace mlir;
 using namespace mlir::memref;
