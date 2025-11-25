@@ -15,15 +15,22 @@ add_dependencies(mlir-headers MLIREinsumPassesIncGen)
 add_mlir_doc(Passes EinsumPasses ./ -gen-dialect-doc)
 
 # ---- Build Library ----
+add_subdirectory(PTX)
+
 add_mlir_library(MLIREinsumPasses
   EinsumHLToLL.cpp  
   Pipelines.cpp
   
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/lib/Transform/Einsum
+  ${PROJECT_SOURCE_DIR}/lib/Transform/Einsum/PTX
 
   DEPENDS
   MLIREinsum
+  MLIREinsumPtxPassesIncGen
   
   LINK_LIBS PUBLIC
+  EinsumPTX
 )
+
+
