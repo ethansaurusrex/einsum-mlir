@@ -69,9 +69,9 @@ static void registerEinsumToPTXPipeline() {
 	  opts.bufferizeFunctionBoundaries = true;
 	pm.addPass(mlir::bufferization::createOneShotBufferizePass(opts));
 	}
-	pm.addPass(mlir::createConvertLinalgToParallelLoopsPass());
+	pm.nest<func::FuncOp>().addPass(mlir::createConvertLinalgToParallelLoopsPass());
 	pm.addPass(createParallelLoopsTracker());
-	pm.addPass(createParallelLoopsRemover());
+	pm.nest<func::FuncOp>().addPass(createParallelLoopsRemover());
 	pm.addPass(createPtxCodegen());
       });			     
 } 
