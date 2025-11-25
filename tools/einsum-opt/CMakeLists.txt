@@ -11,7 +11,9 @@ set(LIBS
     MLIROptLib
     MLIRRegisterAllDialects
     MLIRRegisterAllPasses
+    MLIRRegisterAllExtensions
     MLIRPass
+    MLIRFuncToLLVM
     MLIREinsum
     MLIREinsumPasses
     MLIREinsumToLinalg

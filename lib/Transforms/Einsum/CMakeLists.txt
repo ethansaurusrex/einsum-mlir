@@ -17,6 +17,7 @@ add_mlir_doc(Passes EinsumPasses ./ -gen-dialect-doc)
 # ---- Build Library ----
 add_mlir_library(MLIREinsumPasses
   EinsumHLToLL.cpp  
+  Pipelines.cpp
   
   ADDITIONAL_HEADER_DIRS
   ${PROJECT_SOURCE_DIR}/lib/Transform/Einsum

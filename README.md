@@ -216,17 +216,14 @@ given the following input:
 #map1 = affine_map<(d0, d1, d2) -> (d2, d1)>
 #map2 = affine_map<(d0, d1, d2) -> (d0, d1)>
 module {
-  func.func public @main(%arg0: tensor<3x4xf64>, %arg1: tensor<4x3xf64>) -> tensor<3x3xf64> {
-    %0 = tensor.empty() : tensor<3x3xf64>
-    %cst = arith.constant 0.000000e+00 : f64
-    %1 = linalg.fill ins(%cst : f64) outs(%0 : tensor<3x3xf64>) -> tensor<3x3xf64>
-    %2 = linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "parallel", "reduction"]} ins(%arg0, %arg1 : tensor<3x4xf64>, tensor<4x3xf64>) outs(%1 : tensor<3x3xf64>) {
-    ^bb0(%in: f64, %in_0: f64, %out: f64):
-      %3 = arith.mulf %in, %in_0 : f64
-      %4 = arith.addf %out, %3 : f64
-      linalg.yield %4 : f64
-    } -> tensor<3x3xf64>
-    return %2 : tensor<3x3xf64>
+  func.func @main(%arg0: tensor<4x3xf32>, %arg1: tensor<3x4xf32>, %arg2: tensor<4x4xf32>) -> tensor<4x4xf32> {
+    %0 = linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "parallel", "reduction"]} ins(%arg0, %arg1 : tensor<4x3xf32>, tensor<3x4xf32>) outs(%arg2 : tensor<4x4xf32>) {
+    ^bb0(%in: f32, %in_0: f32, %out: f32):
+      %1 = arith.mulf %in, %in_0 : f32
+      %2 = arith.addf %out, %1 : f32
+      linalg.yield %2 : f32
+    } -> tensor<4x4xf32>
+    return %0 : tensor<4x4xf32>
   }
 }
 ```
@@ -238,18 +235,14 @@ This pass converts ops using `tensor` (value) semantics into ops using `memref` 
 #map1 = affine_map<(d0, d1, d2) -> (d2, d1)>
 #map2 = affine_map<(d0, d1, d2) -> (d0, d1)>
 module {
-  func.func public @main(%arg0: memref<3x4xf64, strided<[?, ?], offset: ?>>, %arg1: memref<4x3xf64, strided<[?, ?], offset: ?>>) -> memref<3x3xf64> {
-    %alloc = memref.alloc() {alignment = 64 : i64} : memref<3x3xf64>
-    %cst = arith.constant 0.000000e+00 : f64
-    linalg.fill ins(%cst : f64) outs(%alloc : memref<3x3xf64>)
-    linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "parallel", "reduction"]} ins(%arg0, %arg1 : memref<3x4xf64, strided<[?, ?], offset: ?>>, memref<4x3xf64, strided<[?, ?], offset: ?>>) outs(%alloc : memref<3x3xf64>) {
-    ^bb0(%in: f64, %in_0: f64, %out: f64):
-      %0 = arith.mulf %in, %in_0 : f64
-      %1 = arith.addf %out, %0 : f64
-      linalg.yield %1 : f64
+  func.func @main(%arg0: memref<4x3xf32, strided<[?, ?], offset: ?>>, %arg1: memref<3x4xf32, strided<[?, ?], offset: ?>>, %arg2: memref<4x4xf32, strided<[?, ?], offset: ?>>) -> memref<4x4xf32, strided<[?, ?], offset: ?>> {
+    linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "parallel", "reduction"]} ins(%arg0, %arg1 : memref<4x3xf32, strided<[?, ?], offset: ?>>, memref<3x4xf32, strided<[?, ?], offset: ?>>) outs(%arg2 : memref<4x4xf32, strided<[?, ?], offset: ?>>) {
+    ^bb0(%in: f32, %in_0: f32, %out: f32):
+      %0 = arith.mulf %in, %in_0 : f32
+      %1 = arith.addf %out, %0 : f32
+      linalg.yield %1 : f32
     }
-    %cast = memref.cast %alloc : memref<3x3xf64> to memref<3x3xf64, strided<[?, ?], offset: ?>>
-    return %alloc : memref<3x3xf64>
+    return %arg2 : memref<4x4xf32, strided<[?, ?], offset: ?>>
   }
 }
 ```
@@ -260,31 +253,24 @@ This pass replaces the declarative `linalg.generic` operation with imperative, n
 
 ```mlir
 module {
-  func.func public @main(%arg0: memref<3x4xf64, strided<[?, ?], offset: ?>>, %arg1: memref<4x3xf64, strided<[?, ?], offset: ?>>) -> memref<3x3xf64> {
+  func.func @main(%arg0: memref<4x3xf32, strided<[?, ?], offset: ?>>, %arg1: memref<3x4xf32, strided<[?, ?], offset: ?>>, %arg2: memref<4x4xf32, strided<[?, ?], offset: ?>>) -> memref<4x4xf32, strided<[?, ?], offset: ?>> {
+    %c0 = arith.constant 0 : index
     %c4 = arith.constant 4 : index
     %c1 = arith.constant 1 : index
     %c3 = arith.constant 3 : index
-    %c0 = arith.constant 0 : index
-    %cst = arith.constant 0.000000e+00 : f64
-    %alloc = memref.alloc() {alignment = 64 : i64} : memref<3x3xf64>
-    scf.for %arg2 = %c0 to %c3 step %c1 {
-      scf.for %arg3 = %c0 to %c3 step %c1 {
-        memref.store %cst, %alloc[%arg2, %arg3] : memref<3x3xf64>
-      }
-    }
-    scf.for %arg2 = %c0 to %c3 step %c1 {
-      scf.for %arg3 = %c0 to %c3 step %c1 {
-        scf.for %arg4 = %c0 to %c4 step %c1 {
-          %0 = memref.load %arg0[%arg2, %arg4] : memref<3x4xf64, strided<[?, ?], offset: ?>>
-          %1 = memref.load %arg1[%arg4, %arg3] : memref<4x3xf64, strided<[?, ?], offset: ?>>
-          %2 = memref.load %alloc[%arg2, %arg3] : memref<3x3xf64>
-          %3 = arith.mulf %0, %1 : f64
-          %4 = arith.addf %2, %3 : f64
-          memref.store %4, %alloc[%arg2, %arg3] : memref<3x3xf64>
+    scf.for %arg3 = %c0 to %c4 step %c1 {
+      scf.for %arg4 = %c0 to %c4 step %c1 {
+        scf.for %arg5 = %c0 to %c3 step %c1 {
+          %0 = memref.load %arg0[%arg3, %arg5] : memref<4x3xf32, strided<[?, ?], offset: ?>>
+          %1 = memref.load %arg1[%arg5, %arg4] : memref<3x4xf32, strided<[?, ?], offset: ?>>
+          %2 = memref.load %arg2[%arg3, %arg4] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+          %3 = arith.mulf %0, %1 : f32
+          %4 = arith.addf %2, %3 : f32
+          memref.store %4, %arg2[%arg3, %arg4] : memref<4x4xf32, strided<[?, ?], offset: ?>>
         }
       }
     }
-    return %alloc : memref<3x3xf64>
+    return %arg2 : memref<4x4xf32, strided<[?, ?], offset: ?>>
   }
 }
 ```
@@ -295,63 +281,45 @@ This pass lowers structured loops (`scf.for`) into a standard Control Flow Graph
 
 ```mlir
 module {
-  func.func public @main(%arg0: memref<3x4xf64, strided<[?, ?], offset: ?>>, %arg1: memref<4x3xf64, strided<[?, ?], offset: ?>>) -> memref<3x3xf64> {
+  func.func @main(%arg0: memref<4x3xf32, strided<[?, ?], offset: ?>>, %arg1: memref<3x4xf32, strided<[?, ?], offset: ?>>, %arg2: memref<4x4xf32, strided<[?, ?], offset: ?>>) -> memref<4x4xf32, strided<[?, ?], offset: ?>> {
+    %c0 = arith.constant 0 : index
     %c4 = arith.constant 4 : index
     %c1 = arith.constant 1 : index
     %c3 = arith.constant 3 : index
-    %c0 = arith.constant 0 : index
-    %cst = arith.constant 0.000000e+00 : f64
-    %alloc = memref.alloc() {alignment = 64 : i64} : memref<3x3xf64>
     cf.br ^bb1(%c0 : index)
-  ^bb1(%0: index):  // 2 preds: ^bb0, ^bb5
-    %1 = arith.cmpi slt, %0, %c3 : index
-    cf.cond_br %1, ^bb2, ^bb6
+  ^bb1(%0: index):  // 2 preds: ^bb0, ^bb8
+    %1 = arith.cmpi slt, %0, %c4 : index
+    cf.cond_br %1, ^bb2, ^bb9
   ^bb2:  // pred: ^bb1
     cf.br ^bb3(%c0 : index)
-  ^bb3(%2: index):  // 2 preds: ^bb2, ^bb4
-    %3 = arith.cmpi slt, %2, %c3 : index
-    cf.cond_br %3, ^bb4, ^bb5
+  ^bb3(%2: index):  // 2 preds: ^bb2, ^bb7
+    %3 = arith.cmpi slt, %2, %c4 : index
+    cf.cond_br %3, ^bb4, ^bb8
   ^bb4:  // pred: ^bb3
-    memref.store %cst, %alloc[%0, %2] : memref<3x3xf64>
-    %4 = arith.addi %2, %c1 : index
-    cf.br ^bb3(%4 : index)
-  ^bb5:  // pred: ^bb3
-    %5 = arith.addi %0, %c1 : index
-    cf.br ^bb1(%5 : index)
-  ^bb6:  // pred: ^bb1
-    cf.br ^bb7(%c0 : index)
-  ^bb7(%6: index):  // 2 preds: ^bb6, ^bb14
-    %7 = arith.cmpi slt, %6, %c3 : index
-    cf.cond_br %7, ^bb8, ^bb15
-  ^bb8:  // pred: ^bb7
-    cf.br ^bb9(%c0 : index)
-  ^bb9(%8: index):  // 2 preds: ^bb8, ^bb13
-    %9 = arith.cmpi slt, %8, %c3 : index
-    cf.cond_br %9, ^bb10, ^bb14
-  ^bb10:  // pred: ^bb9
-    cf.br ^bb11(%c0 : index)
-  ^bb11(%10: index):  // 2 preds: ^bb10, ^bb12
-    %11 = arith.cmpi slt, %10, %c4 : index
-    cf.cond_br %11, ^bb12, ^bb13
-  ^bb12:  // pred: ^bb11
-    %12 = memref.load %arg0[%6, %10] : memref<3x4xf64, strided<[?, ?], offset: ?>>
-    %13 = memref.load %arg1[%10, %8] : memref<4x3xf64, strided<[?, ?], offset: ?>>
-    %14 = memref.load %alloc[%6, %8] : memref<3x3xf64>
-    %15 = arith.mulf %12, %13 : f64
-    %16 = arith.addf %14, %15 : f64
-    memref.store %16, %alloc[%6, %8] : memref<3x3xf64>
-    %17 = arith.addi %10, %c1 : index
-    cf.br ^bb11(%17 : index)
-  ^bb13:  // pred: ^bb11
-    %18 = arith.addi %8, %c1 : index
-    cf.br ^bb9(%18 : index)
-  ^bb14:  // pred: ^bb9
-    %19 = arith.addi %6, %c1 : index
-    cf.br ^bb7(%19 : index)
-  ^bb15:  // pred: ^bb7
-    return %alloc : memref<3x3xf64>
+    cf.br ^bb5(%c0 : index)
+  ^bb5(%4: index):  // 2 preds: ^bb4, ^bb6
+    %5 = arith.cmpi slt, %4, %c3 : index
+    cf.cond_br %5, ^bb6, ^bb7
+  ^bb6:  // pred: ^bb5
+    %6 = memref.load %arg0[%0, %4] : memref<4x3xf32, strided<[?, ?], offset: ?>>
+    %7 = memref.load %arg1[%4, %2] : memref<3x4xf32, strided<[?, ?], offset: ?>>
+    %8 = memref.load %arg2[%0, %2] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %9 = arith.mulf %6, %7 : f32
+    %10 = arith.addf %8, %9 : f32
+    memref.store %10, %arg2[%0, %2] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %11 = arith.addi %4, %c1 : index
+    cf.br ^bb5(%11 : index)
+  ^bb7:  // pred: ^bb5
+    %12 = arith.addi %2, %c1 : index
+    cf.br ^bb3(%12 : index)
+  ^bb8:  // pred: ^bb3
+    %13 = arith.addi %0, %c1 : index
+    cf.br ^bb1(%13 : index)
+  ^bb9:  // pred: ^bb1
+    return %arg2 : memref<4x4xf32, strided<[?, ?], offset: ?>>
   }
-}```
+}
+```
 
 ### `--convert-cf-to-llvm`
 
@@ -359,72 +327,49 @@ This pass converts the control flow dialect into llvm ops.
 
 ```mlir
 module {
-  func.func public @main(%arg0: memref<3x4xf64, strided<[?, ?], offset: ?>>, %arg1: memref<4x3xf64, strided<[?, ?], offset: ?>>) -> memref<3x3xf64> {
+  func.func @main(%arg0: memref<4x3xf32, strided<[?, ?], offset: ?>>, %arg1: memref<3x4xf32, strided<[?, ?], offset: ?>>, %arg2: memref<4x4xf32, strided<[?, ?], offset: ?>>) -> memref<4x4xf32, strided<[?, ?], offset: ?>> {
+    %c0 = arith.constant 0 : index
+    %0 = builtin.unrealized_conversion_cast %c0 : index to i64
     %c4 = arith.constant 4 : index
     %c1 = arith.constant 1 : index
     %c3 = arith.constant 3 : index
-    %c0 = arith.constant 0 : index
-    %0 = builtin.unrealized_conversion_cast %c0 : index to i64
-    %cst = arith.constant 0.000000e+00 : f64
-    %alloc = memref.alloc() {alignment = 64 : i64} : memref<3x3xf64>
     llvm.br ^bb1(%0 : i64)
-  ^bb1(%1: i64):  // 2 preds: ^bb0, ^bb5
+  ^bb1(%1: i64):  // 2 preds: ^bb0, ^bb8
     %2 = builtin.unrealized_conversion_cast %1 : i64 to index
-    %3 = arith.cmpi slt, %2, %c3 : index
-    llvm.cond_br %3, ^bb2, ^bb6
+    %3 = arith.cmpi slt, %2, %c4 : index
+    llvm.cond_br %3, ^bb2, ^bb9
   ^bb2:  // pred: ^bb1
     llvm.br ^bb3(%0 : i64)
-  ^bb3(%4: i64):  // 2 preds: ^bb2, ^bb4
+  ^bb3(%4: i64):  // 2 preds: ^bb2, ^bb7
     %5 = builtin.unrealized_conversion_cast %4 : i64 to index
-    %6 = arith.cmpi slt, %5, %c3 : index
-    llvm.cond_br %6, ^bb4, ^bb5
+    %6 = arith.cmpi slt, %5, %c4 : index
+    llvm.cond_br %6, ^bb4, ^bb8
   ^bb4:  // pred: ^bb3
-    memref.store %cst, %alloc[%2, %5] : memref<3x3xf64>
-    %7 = arith.addi %5, %c1 : index
-    %8 = builtin.unrealized_conversion_cast %7 : index to i64
-    llvm.br ^bb3(%8 : i64)
-  ^bb5:  // pred: ^bb3
-    %9 = arith.addi %2, %c1 : index
-    %10 = builtin.unrealized_conversion_cast %9 : index to i64
-    llvm.br ^bb1(%10 : i64)
-  ^bb6:  // pred: ^bb1
-    llvm.br ^bb7(%0 : i64)
-  ^bb7(%11: i64):  // 2 preds: ^bb6, ^bb14
-    %12 = builtin.unrealized_conversion_cast %11 : i64 to index
-    %13 = arith.cmpi slt, %12, %c3 : index
-    llvm.cond_br %13, ^bb8, ^bb15
-  ^bb8:  // pred: ^bb7
-    llvm.br ^bb9(%0 : i64)
-  ^bb9(%14: i64):  // 2 preds: ^bb8, ^bb13
-    %15 = builtin.unrealized_conversion_cast %14 : i64 to index
-    %16 = arith.cmpi slt, %15, %c3 : index
-    llvm.cond_br %16, ^bb10, ^bb14
-  ^bb10:  // pred: ^bb9
-    llvm.br ^bb11(%0 : i64)
-  ^bb11(%17: i64):  // 2 preds: ^bb10, ^bb12
-    %18 = builtin.unrealized_conversion_cast %17 : i64 to index
-    %19 = arith.cmpi slt, %18, %c4 : index
-    llvm.cond_br %19, ^bb12, ^bb13
-  ^bb12:  // pred: ^bb11
-    %20 = memref.load %arg0[%12, %18] : memref<3x4xf64, strided<[?, ?], offset: ?>>
-    %21 = memref.load %arg1[%18, %15] : memref<4x3xf64, strided<[?, ?], offset: ?>>
-    %22 = memref.load %alloc[%12, %15] : memref<3x3xf64>
-    %23 = arith.mulf %20, %21 : f64
-    %24 = arith.addf %22, %23 : f64
-    memref.store %24, %alloc[%12, %15] : memref<3x3xf64>
-    %25 = arith.addi %18, %c1 : index
-    %26 = builtin.unrealized_conversion_cast %25 : index to i64
-    llvm.br ^bb11(%26 : i64)
-  ^bb13:  // pred: ^bb11
-    %27 = arith.addi %15, %c1 : index
-    %28 = builtin.unrealized_conversion_cast %27 : index to i64
-    llvm.br ^bb9(%28 : i64)
-  ^bb14:  // pred: ^bb9
-    %29 = arith.addi %12, %c1 : index
-    %30 = builtin.unrealized_conversion_cast %29 : index to i64
-    llvm.br ^bb7(%30 : i64)
-  ^bb15:  // pred: ^bb7
-    return %alloc : memref<3x3xf64>
+    llvm.br ^bb5(%0 : i64)
+  ^bb5(%7: i64):  // 2 preds: ^bb4, ^bb6
+    %8 = builtin.unrealized_conversion_cast %7 : i64 to index
+    %9 = arith.cmpi slt, %8, %c3 : index
+    llvm.cond_br %9, ^bb6, ^bb7
+  ^bb6:  // pred: ^bb5
+    %10 = memref.load %arg0[%2, %8] : memref<4x3xf32, strided<[?, ?], offset: ?>>
+    %11 = memref.load %arg1[%8, %5] : memref<3x4xf32, strided<[?, ?], offset: ?>>
+    %12 = memref.load %arg2[%2, %5] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %13 = arith.mulf %10, %11 : f32
+    %14 = arith.addf %12, %13 : f32
+    memref.store %14, %arg2[%2, %5] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %15 = arith.addi %8, %c1 : index
+    %16 = builtin.unrealized_conversion_cast %15 : index to i64
+    llvm.br ^bb5(%16 : i64)
+  ^bb7:  // pred: ^bb5
+    %17 = arith.addi %5, %c1 : index
+    %18 = builtin.unrealized_conversion_cast %17 : index to i64
+    llvm.br ^bb3(%18 : i64)
+  ^bb8:  // pred: ^bb3
+    %19 = arith.addi %2, %c1 : index
+    %20 = builtin.unrealized_conversion_cast %19 : index to i64
+    llvm.br ^bb1(%20 : i64)
+  ^bb9:  // pred: ^bb1
+    return %arg2 : memref<4x4xf32, strided<[?, ?], offset: ?>>
   }
 }
 ```
@@ -435,78 +380,53 @@ These passes convert dialect-specific arithmetic operations (like `arith.addf` o
 
 ```mlir
 module {
-  func.func public @main(%arg0: memref<3x4xf64, strided<[?, ?], offset: ?>>, %arg1: memref<4x3xf64, strided<[?, ?], offset: ?>>) -> memref<3x3xf64> {
-    %0 = llvm.mlir.constant(4 : index) : i64
-    %1 = llvm.mlir.constant(1 : index) : i64
-    %2 = llvm.mlir.constant(3 : index) : i64
-    %3 = llvm.mlir.constant(0 : index) : i64
-    %4 = builtin.unrealized_conversion_cast %3 : i64 to index
-    %5 = builtin.unrealized_conversion_cast %4 : index to i64
-    %6 = llvm.mlir.constant(0.000000e+00 : f64) : f64
-    %alloc = memref.alloc() {alignment = 64 : i64} : memref<3x3xf64>
-    llvm.br ^bb1(%5 : i64)
-  ^bb1(%7: i64):  // 2 preds: ^bb0, ^bb5
-    %8 = builtin.unrealized_conversion_cast %7 : i64 to index
-    %9 = llvm.icmp "slt" %7, %2 : i64
-    llvm.cond_br %9, ^bb2, ^bb6
+  func.func @main(%arg0: memref<4x3xf32, strided<[?, ?], offset: ?>>, %arg1: memref<3x4xf32, strided<[?, ?], offset: ?>>, %arg2: memref<4x4xf32, strided<[?, ?], offset: ?>>) -> memref<4x4xf32, strided<[?, ?], offset: ?>> {
+    %0 = llvm.mlir.constant(0 : index) : i64
+    %1 = builtin.unrealized_conversion_cast %0 : i64 to index
+    %2 = builtin.unrealized_conversion_cast %1 : index to i64
+    %3 = llvm.mlir.constant(4 : index) : i64
+    %4 = llvm.mlir.constant(1 : index) : i64
+    %5 = llvm.mlir.constant(3 : index) : i64
+    llvm.br ^bb1(%2 : i64)
+  ^bb1(%6: i64):  // 2 preds: ^bb0, ^bb8
+    %7 = builtin.unrealized_conversion_cast %6 : i64 to index
+    %8 = llvm.icmp "slt" %6, %3 : i64
+    llvm.cond_br %8, ^bb2, ^bb9
   ^bb2:  // pred: ^bb1
-    llvm.br ^bb3(%5 : i64)
-  ^bb3(%10: i64):  // 2 preds: ^bb2, ^bb4
-    %11 = builtin.unrealized_conversion_cast %10 : i64 to index
-    %12 = llvm.icmp "slt" %10, %2 : i64
-    llvm.cond_br %12, ^bb4, ^bb5
+    llvm.br ^bb3(%2 : i64)
+  ^bb3(%9: i64):  // 2 preds: ^bb2, ^bb7
+    %10 = builtin.unrealized_conversion_cast %9 : i64 to index
+    %11 = llvm.icmp "slt" %9, %3 : i64
+    llvm.cond_br %11, ^bb4, ^bb8
   ^bb4:  // pred: ^bb3
-    memref.store %6, %alloc[%8, %11] : memref<3x3xf64>
-    %13 = llvm.add %10, %1 : i64
-    %14 = builtin.unrealized_conversion_cast %13 : i64 to index
-    %15 = builtin.unrealized_conversion_cast %14 : index to i64
-    llvm.br ^bb3(%15 : i64)
-  ^bb5:  // pred: ^bb3
-    %16 = llvm.add %7, %1 : i64
-    %17 = builtin.unrealized_conversion_cast %16 : i64 to index
-    %18 = builtin.unrealized_conversion_cast %17 : index to i64
-    llvm.br ^bb1(%18 : i64)
-  ^bb6:  // pred: ^bb1
-    llvm.br ^bb7(%5 : i64)
-  ^bb7(%19: i64):  // 2 preds: ^bb6, ^bb14
-    %20 = builtin.unrealized_conversion_cast %19 : i64 to index
-    %21 = llvm.icmp "slt" %19, %2 : i64
-    llvm.cond_br %21, ^bb8, ^bb15
-  ^bb8:  // pred: ^bb7
-    llvm.br ^bb9(%5 : i64)
-  ^bb9(%22: i64):  // 2 preds: ^bb8, ^bb13
-    %23 = builtin.unrealized_conversion_cast %22 : i64 to index
-    %24 = llvm.icmp "slt" %22, %2 : i64
-    llvm.cond_br %24, ^bb10, ^bb14
-  ^bb10:  // pred: ^bb9
-    llvm.br ^bb11(%5 : i64)
-  ^bb11(%25: i64):  // 2 preds: ^bb10, ^bb12
-    %26 = builtin.unrealized_conversion_cast %25 : i64 to index
-    %27 = llvm.icmp "slt" %25, %0 : i64
-    llvm.cond_br %27, ^bb12, ^bb13
-  ^bb12:  // pred: ^bb11
-    %28 = memref.load %arg0[%20, %26] : memref<3x4xf64, strided<[?, ?], offset: ?>>
-    %29 = memref.load %arg1[%26, %23] : memref<4x3xf64, strided<[?, ?], offset: ?>>
-    %30 = memref.load %alloc[%20, %23] : memref<3x3xf64>
-    %31 = llvm.fmul %28, %29 : f64
-    %32 = llvm.fadd %30, %31 : f64
-    memref.store %32, %alloc[%20, %23] : memref<3x3xf64>
-    %33 = llvm.add %25, %1 : i64
-    %34 = builtin.unrealized_conversion_cast %33 : i64 to index
-    %35 = builtin.unrealized_conversion_cast %34 : index to i64
-    llvm.br ^bb11(%35 : i64)
-  ^bb13:  // pred: ^bb11
-    %36 = llvm.add %22, %1 : i64
-    %37 = builtin.unrealized_conversion_cast %36 : i64 to index
-    %38 = builtin.unrealized_conversion_cast %37 : index to i64
-    llvm.br ^bb9(%38 : i64)
-  ^bb14:  // pred: ^bb9
-    %39 = llvm.add %19, %1 : i64
-    %40 = builtin.unrealized_conversion_cast %39 : i64 to index
-    %41 = builtin.unrealized_conversion_cast %40 : index to i64
-    llvm.br ^bb7(%41 : i64)
-  ^bb15:  // pred: ^bb7
-    return %alloc : memref<3x3xf64>
+    llvm.br ^bb5(%2 : i64)
+  ^bb5(%12: i64):  // 2 preds: ^bb4, ^bb6
+    %13 = builtin.unrealized_conversion_cast %12 : i64 to index
+    %14 = llvm.icmp "slt" %12, %5 : i64
+    llvm.cond_br %14, ^bb6, ^bb7
+  ^bb6:  // pred: ^bb5
+    %15 = memref.load %arg0[%7, %13] : memref<4x3xf32, strided<[?, ?], offset: ?>>
+    %16 = memref.load %arg1[%13, %10] : memref<3x4xf32, strided<[?, ?], offset: ?>>
+    %17 = memref.load %arg2[%7, %10] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %18 = llvm.fmul %15, %16 : f32
+    %19 = llvm.fadd %17, %18 : f32
+    memref.store %19, %arg2[%7, %10] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %20 = llvm.add %12, %4 : i64
+    %21 = builtin.unrealized_conversion_cast %20 : i64 to index
+    %22 = builtin.unrealized_conversion_cast %21 : index to i64
+    llvm.br ^bb5(%22 : i64)
+  ^bb7:  // pred: ^bb5
+    %23 = llvm.add %9, %4 : i64
+    %24 = builtin.unrealized_conversion_cast %23 : i64 to index
+    %25 = builtin.unrealized_conversion_cast %24 : index to i64
+    llvm.br ^bb3(%25 : i64)
+  ^bb8:  // pred: ^bb3
+    %26 = llvm.add %6, %4 : i64
+    %27 = builtin.unrealized_conversion_cast %26 : i64 to index
+    %28 = builtin.unrealized_conversion_cast %27 : index to i64
+    llvm.br ^bb1(%28 : i64)
+  ^bb9:  // pred: ^bb1
+    return %arg2 : memref<4x4xf32, strided<[?, ?], offset: ?>>
   }
 }
 ```
@@ -517,7 +437,7 @@ This pass transforms the function signature and call conventions. It converts `f
 
 ```
 module {
-  llvm.func @main(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64, %arg6: i64, %arg7: !llvm.ptr, %arg8: !llvm.ptr, %arg9: i64, %arg10: i64, %arg11: i64, %arg12: i64, %arg13: i64) -> !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> {
+  llvm.func @main(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64, %arg6: i64, %arg7: !llvm.ptr, %arg8: !llvm.ptr, %arg9: i64, %arg10: i64, %arg11: i64, %arg12: i64, %arg13: i64, %arg14: !llvm.ptr, %arg15: !llvm.ptr, %arg16: i64, %arg17: i64, %arg18: i64, %arg19: i64, %arg20: i64) -> !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> {
     %0 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
     %1 = llvm.insertvalue %arg7, %0[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %2 = llvm.insertvalue %arg8, %1[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
@@ -526,7 +446,7 @@ module {
     %5 = llvm.insertvalue %arg12, %4[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %6 = llvm.insertvalue %arg11, %5[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %7 = llvm.insertvalue %arg13, %6[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %8 = builtin.unrealized_conversion_cast %7 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<4x3xf64, strided<[?, ?], offset: ?>>
+    %8 = builtin.unrealized_conversion_cast %7 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<3x4xf32, strided<[?, ?], offset: ?>>
     %9 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
     %10 = llvm.insertvalue %arg0, %9[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %11 = llvm.insertvalue %arg1, %10[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
@@ -535,78 +455,61 @@ module {
     %14 = llvm.insertvalue %arg5, %13[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %15 = llvm.insertvalue %arg4, %14[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %16 = llvm.insertvalue %arg6, %15[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %17 = builtin.unrealized_conversion_cast %16 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<3x4xf64, strided<[?, ?], offset: ?>>
-    %18 = llvm.mlir.constant(4 : index) : i64
-    %19 = llvm.mlir.constant(1 : index) : i64
-    %20 = llvm.mlir.constant(3 : index) : i64
-    %21 = llvm.mlir.constant(0 : index) : i64
-    %22 = builtin.unrealized_conversion_cast %21 : i64 to index
-    %23 = builtin.unrealized_conversion_cast %22 : index to i64
-    %24 = llvm.mlir.constant(0.000000e+00 : f64) : f64
-    %alloc = memref.alloc() {alignment = 64 : i64} : memref<3x3xf64>
-    %25 = builtin.unrealized_conversion_cast %alloc : memref<3x3xf64> to !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-    llvm.br ^bb1(%23 : i64)
-  ^bb1(%26: i64):  // 2 preds: ^bb0, ^bb5
-    %27 = builtin.unrealized_conversion_cast %26 : i64 to index
-    %28 = llvm.icmp "slt" %26, %20 : i64
-    llvm.cond_br %28, ^bb2, ^bb6
+    %17 = builtin.unrealized_conversion_cast %16 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<4x3xf32, strided<[?, ?], offset: ?>>
+    %18 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+    %19 = llvm.insertvalue %arg14, %18[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %20 = llvm.insertvalue %arg15, %19[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %21 = llvm.insertvalue %arg16, %20[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %22 = llvm.insertvalue %arg17, %21[3, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %23 = llvm.insertvalue %arg19, %22[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %24 = llvm.insertvalue %arg18, %23[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %25 = llvm.insertvalue %arg20, %24[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %26 = builtin.unrealized_conversion_cast %25 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %27 = llvm.mlir.constant(0 : index) : i64
+    %28 = builtin.unrealized_conversion_cast %27 : i64 to index
+    %29 = builtin.unrealized_conversion_cast %28 : index to i64
+    %30 = llvm.mlir.constant(4 : index) : i64
+    %31 = llvm.mlir.constant(1 : index) : i64
+    %32 = llvm.mlir.constant(3 : index) : i64
+    llvm.br ^bb1(%29 : i64)
+  ^bb1(%33: i64):  // 2 preds: ^bb0, ^bb8
+    %34 = builtin.unrealized_conversion_cast %33 : i64 to index
+    %35 = llvm.icmp "slt" %33, %30 : i64
+    llvm.cond_br %35, ^bb2, ^bb9
   ^bb2:  // pred: ^bb1
-    llvm.br ^bb3(%23 : i64)
-  ^bb3(%29: i64):  // 2 preds: ^bb2, ^bb4
-    %30 = builtin.unrealized_conversion_cast %29 : i64 to index
-    %31 = llvm.icmp "slt" %29, %20 : i64
-    llvm.cond_br %31, ^bb4, ^bb5
+    llvm.br ^bb3(%29 : i64)
+  ^bb3(%36: i64):  // 2 preds: ^bb2, ^bb7
+    %37 = builtin.unrealized_conversion_cast %36 : i64 to index
+    %38 = llvm.icmp "slt" %36, %30 : i64
+    llvm.cond_br %38, ^bb4, ^bb8
   ^bb4:  // pred: ^bb3
-    memref.store %24, %alloc[%27, %30] : memref<3x3xf64>
-    %32 = llvm.add %29, %19 : i64
-    %33 = builtin.unrealized_conversion_cast %32 : i64 to index
-    %34 = builtin.unrealized_conversion_cast %33 : index to i64
-    llvm.br ^bb3(%34 : i64)
-  ^bb5:  // pred: ^bb3
-    %35 = llvm.add %26, %19 : i64
-    %36 = builtin.unrealized_conversion_cast %35 : i64 to index
-    %37 = builtin.unrealized_conversion_cast %36 : index to i64
-    llvm.br ^bb1(%37 : i64)
-  ^bb6:  // pred: ^bb1
-    llvm.br ^bb7(%23 : i64)
-  ^bb7(%38: i64):  // 2 preds: ^bb6, ^bb14
-    %39 = builtin.unrealized_conversion_cast %38 : i64 to index
-    %40 = llvm.icmp "slt" %38, %20 : i64
-    llvm.cond_br %40, ^bb8, ^bb15
-  ^bb8:  // pred: ^bb7
-    llvm.br ^bb9(%23 : i64)
-  ^bb9(%41: i64):  // 2 preds: ^bb8, ^bb13
-    %42 = builtin.unrealized_conversion_cast %41 : i64 to index
-    %43 = llvm.icmp "slt" %41, %20 : i64
-    llvm.cond_br %43, ^bb10, ^bb14
-  ^bb10:  // pred: ^bb9
-    llvm.br ^bb11(%23 : i64)
-  ^bb11(%44: i64):  // 2 preds: ^bb10, ^bb12
-    %45 = builtin.unrealized_conversion_cast %44 : i64 to index
-    %46 = llvm.icmp "slt" %44, %18 : i64
-    llvm.cond_br %46, ^bb12, ^bb13
-  ^bb12:  // pred: ^bb11
-    %47 = memref.load %17[%39, %45] : memref<3x4xf64, strided<[?, ?], offset: ?>>
-    %48 = memref.load %8[%45, %42] : memref<4x3xf64, strided<[?, ?], offset: ?>>
-    %49 = memref.load %alloc[%39, %42] : memref<3x3xf64>
-    %50 = llvm.fmul %47, %48 : f64
-    %51 = llvm.fadd %49, %50 : f64
-    memref.store %51, %alloc[%39, %42] : memref<3x3xf64>
-    %52 = llvm.add %44, %19 : i64
-    %53 = builtin.unrealized_conversion_cast %52 : i64 to index
-    %54 = builtin.unrealized_conversion_cast %53 : index to i64
-    llvm.br ^bb11(%54 : i64)
-  ^bb13:  // pred: ^bb11
-    %55 = llvm.add %41, %19 : i64
-    %56 = builtin.unrealized_conversion_cast %55 : i64 to index
-    %57 = builtin.unrealized_conversion_cast %56 : index to i64
-    llvm.br ^bb9(%57 : i64)
-  ^bb14:  // pred: ^bb9
-    %58 = llvm.add %38, %19 : i64
-    %59 = builtin.unrealized_conversion_cast %58 : i64 to index
-    %60 = builtin.unrealized_conversion_cast %59 : index to i64
-    llvm.br ^bb7(%60 : i64)
-  ^bb15:  // pred: ^bb7
+    llvm.br ^bb5(%29 : i64)
+  ^bb5(%39: i64):  // 2 preds: ^bb4, ^bb6
+    %40 = builtin.unrealized_conversion_cast %39 : i64 to index
+    %41 = llvm.icmp "slt" %39, %32 : i64
+    llvm.cond_br %41, ^bb6, ^bb7
+  ^bb6:  // pred: ^bb5
+    %42 = memref.load %17[%34, %40] : memref<4x3xf32, strided<[?, ?], offset: ?>>
+    %43 = memref.load %8[%40, %37] : memref<3x4xf32, strided<[?, ?], offset: ?>>
+    %44 = memref.load %26[%34, %37] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %45 = llvm.fmul %42, %43 : f32
+    %46 = llvm.fadd %44, %45 : f32
+    memref.store %46, %26[%34, %37] : memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %47 = llvm.add %39, %31 : i64
+    %48 = builtin.unrealized_conversion_cast %47 : i64 to index
+    %49 = builtin.unrealized_conversion_cast %48 : index to i64
+    llvm.br ^bb5(%49 : i64)
+  ^bb7:  // pred: ^bb5
+    %50 = llvm.add %36, %31 : i64
+    %51 = builtin.unrealized_conversion_cast %50 : i64 to index
+    %52 = builtin.unrealized_conversion_cast %51 : index to i64
+    llvm.br ^bb3(%52 : i64)
+  ^bb8:  // pred: ^bb3
+    %53 = llvm.add %33, %31 : i64
+    %54 = builtin.unrealized_conversion_cast %53 : i64 to index
+    %55 = builtin.unrealized_conversion_cast %54 : index to i64
+    llvm.br ^bb1(%55 : i64)
+  ^bb9:  // pred: ^bb1
     llvm.return %25 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   }
 }
@@ -619,8 +522,7 @@ This pass lowers the `memref.load` and `memref.store` operations (and the `memre
 
 ```mlir
 module {
-  llvm.func @malloc(i64) -> !llvm.ptr
-  llvm.func @main(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64, %arg6: i64, %arg7: !llvm.ptr, %arg8: !llvm.ptr, %arg9: i64, %arg10: i64, %arg11: i64, %arg12: i64, %arg13: i64) -> !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> {
+  llvm.func @main(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64, %arg6: i64, %arg7: !llvm.ptr, %arg8: !llvm.ptr, %arg9: i64, %arg10: i64, %arg11: i64, %arg12: i64, %arg13: i64, %arg14: !llvm.ptr, %arg15: !llvm.ptr, %arg16: i64, %arg17: i64, %arg18: i64, %arg19: i64, %arg20: i64) -> !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> {
     %0 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
     %1 = llvm.insertvalue %arg7, %0[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %2 = llvm.insertvalue %arg8, %1[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
@@ -629,7 +531,7 @@ module {
     %5 = llvm.insertvalue %arg12, %4[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %6 = llvm.insertvalue %arg11, %5[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %7 = llvm.insertvalue %arg13, %6[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %8 = builtin.unrealized_conversion_cast %7 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<4x3xf64, strided<[?, ?], offset: ?>>
+    %8 = builtin.unrealized_conversion_cast %7 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<3x4xf32, strided<[?, ?], offset: ?>>
     %9 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
     %10 = llvm.insertvalue %arg0, %9[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %11 = llvm.insertvalue %arg1, %10[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
@@ -638,138 +540,98 @@ module {
     %14 = llvm.insertvalue %arg5, %13[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %15 = llvm.insertvalue %arg4, %14[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %16 = llvm.insertvalue %arg6, %15[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %17 = builtin.unrealized_conversion_cast %16 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<3x4xf64, strided<[?, ?], offset: ?>>
-    %18 = llvm.mlir.constant(4 : index) : i64
-    %19 = llvm.mlir.constant(1 : index) : i64
-    %20 = llvm.mlir.constant(3 : index) : i64
-    %21 = llvm.mlir.constant(0 : index) : i64
-    %22 = builtin.unrealized_conversion_cast %21 : i64 to index
-    %23 = builtin.unrealized_conversion_cast %22 : index to i64
-    %24 = llvm.mlir.constant(0.000000e+00 : f64) : f64
-    %25 = llvm.mlir.constant(3 : index) : i64
-    %26 = llvm.mlir.constant(3 : index) : i64
-    %27 = llvm.mlir.constant(1 : index) : i64
-    %28 = llvm.mlir.constant(9 : index) : i64
-    %29 = llvm.mlir.zero : !llvm.ptr
-    %30 = llvm.getelementptr %29[%28] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %31 = llvm.ptrtoint %30 : !llvm.ptr to i64
-    %32 = llvm.mlir.constant(64 : index) : i64
-    %33 = llvm.add %31, %32 : i64
-    %34 = llvm.call @malloc(%33) : (i64) -> !llvm.ptr
-    %35 = llvm.ptrtoint %34 : !llvm.ptr to i64
-    %36 = llvm.mlir.constant(1 : index) : i64
-    %37 = llvm.sub %32, %36 : i64
-    %38 = llvm.add %35, %37 : i64
-    %39 = llvm.urem %38, %32 : i64
-    %40 = llvm.sub %38, %39 : i64
-    %41 = llvm.inttoptr %40 : i64 to !llvm.ptr
-    %42 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-    %43 = llvm.insertvalue %34, %42[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %44 = llvm.insertvalue %41, %43[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %45 = llvm.mlir.constant(0 : index) : i64
-    %46 = llvm.insertvalue %45, %44[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %47 = llvm.insertvalue %25, %46[3, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %48 = llvm.insertvalue %26, %47[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %49 = llvm.insertvalue %26, %48[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %50 = llvm.insertvalue %27, %49[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %51 = builtin.unrealized_conversion_cast %50 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<3x3xf64>
-    %52 = builtin.unrealized_conversion_cast %51 : memref<3x3xf64> to !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-    llvm.br ^bb1(%23 : i64)
-  ^bb1(%53: i64):  // 2 preds: ^bb0, ^bb5
-    %54 = builtin.unrealized_conversion_cast %53 : i64 to index
-    %55 = llvm.icmp "slt" %53, %20 : i64
-    llvm.cond_br %55, ^bb2, ^bb6
+    %17 = builtin.unrealized_conversion_cast %16 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<4x3xf32, strided<[?, ?], offset: ?>>
+    %18 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+    %19 = llvm.insertvalue %arg14, %18[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %20 = llvm.insertvalue %arg15, %19[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %21 = llvm.insertvalue %arg16, %20[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %22 = llvm.insertvalue %arg17, %21[3, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %23 = llvm.insertvalue %arg19, %22[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %24 = llvm.insertvalue %arg18, %23[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %25 = llvm.insertvalue %arg20, %24[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %26 = builtin.unrealized_conversion_cast %25 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> to memref<4x4xf32, strided<[?, ?], offset: ?>>
+    %27 = llvm.mlir.constant(0 : index) : i64
+    %28 = builtin.unrealized_conversion_cast %27 : i64 to index
+    %29 = builtin.unrealized_conversion_cast %28 : index to i64
+    %30 = llvm.mlir.constant(4 : index) : i64
+    %31 = llvm.mlir.constant(1 : index) : i64
+    %32 = llvm.mlir.constant(3 : index) : i64
+    llvm.br ^bb1(%29 : i64)
+  ^bb1(%33: i64):  // 2 preds: ^bb0, ^bb8
+    %34 = builtin.unrealized_conversion_cast %33 : i64 to index
+    %35 = llvm.icmp "slt" %33, %30 : i64
+    llvm.cond_br %35, ^bb2, ^bb9
   ^bb2:  // pred: ^bb1
-    llvm.br ^bb3(%23 : i64)
-  ^bb3(%56: i64):  // 2 preds: ^bb2, ^bb4
-    %57 = builtin.unrealized_conversion_cast %56 : i64 to index
-    %58 = llvm.icmp "slt" %56, %20 : i64
-    llvm.cond_br %58, ^bb4, ^bb5
+    llvm.br ^bb3(%29 : i64)
+  ^bb3(%36: i64):  // 2 preds: ^bb2, ^bb7
+    %37 = builtin.unrealized_conversion_cast %36 : i64 to index
+    %38 = llvm.icmp "slt" %36, %30 : i64
+    llvm.cond_br %38, ^bb4, ^bb8
   ^bb4:  // pred: ^bb3
-    %59 = llvm.extractvalue %50[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %60 = llvm.mlir.constant(3 : index) : i64
-    %61 = llvm.mul %53, %60 overflow<nsw, nuw> : i64
-    %62 = llvm.add %61, %56 overflow<nsw, nuw> : i64
-    %63 = llvm.getelementptr inbounds|nuw %59[%62] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    llvm.store %24, %63 : f64, !llvm.ptr
-    %64 = llvm.add %56, %19 : i64
-    %65 = builtin.unrealized_conversion_cast %64 : i64 to index
-    %66 = builtin.unrealized_conversion_cast %65 : index to i64
-    llvm.br ^bb3(%66 : i64)
-  ^bb5:  // pred: ^bb3
-    %67 = llvm.add %53, %19 : i64
-    %68 = builtin.unrealized_conversion_cast %67 : i64 to index
-    %69 = builtin.unrealized_conversion_cast %68 : index to i64
-    llvm.br ^bb1(%69 : i64)
-  ^bb6:  // pred: ^bb1
-    llvm.br ^bb7(%23 : i64)
-  ^bb7(%70: i64):  // 2 preds: ^bb6, ^bb14
-    %71 = builtin.unrealized_conversion_cast %70 : i64 to index
-    %72 = llvm.icmp "slt" %70, %20 : i64
-    llvm.cond_br %72, ^bb8, ^bb15
-  ^bb8:  // pred: ^bb7
-    llvm.br ^bb9(%23 : i64)
-  ^bb9(%73: i64):  // 2 preds: ^bb8, ^bb13
-    %74 = builtin.unrealized_conversion_cast %73 : i64 to index
-    %75 = llvm.icmp "slt" %73, %20 : i64
-    llvm.cond_br %75, ^bb10, ^bb14
-  ^bb10:  // pred: ^bb9
-    llvm.br ^bb11(%23 : i64)
-  ^bb11(%76: i64):  // 2 preds: ^bb10, ^bb12
-    %77 = builtin.unrealized_conversion_cast %76 : i64 to index
-    %78 = llvm.icmp "slt" %76, %18 : i64
-    llvm.cond_br %78, ^bb12, ^bb13
-  ^bb12:  // pred: ^bb11
-    %79 = llvm.extractvalue %16[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %80 = llvm.extractvalue %16[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %81 = llvm.getelementptr %79[%80] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %82 = llvm.extractvalue %16[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %83 = llvm.mul %70, %82 overflow<nsw, nuw> : i64
-    %84 = llvm.extractvalue %16[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %85 = llvm.mul %76, %84 overflow<nsw, nuw> : i64
-    %86 = llvm.add %83, %85 overflow<nsw, nuw> : i64
-    %87 = llvm.getelementptr inbounds|nuw %81[%86] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %88 = llvm.load %87 : !llvm.ptr -> f64
-    %89 = llvm.extractvalue %7[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %90 = llvm.extractvalue %7[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %91 = llvm.getelementptr %89[%90] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %92 = llvm.extractvalue %7[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %93 = llvm.mul %76, %92 overflow<nsw, nuw> : i64
-    %94 = llvm.extractvalue %7[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %95 = llvm.mul %73, %94 overflow<nsw, nuw> : i64
-    %96 = llvm.add %93, %95 overflow<nsw, nuw> : i64
-    %97 = llvm.getelementptr inbounds|nuw %91[%96] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %98 = llvm.load %97 : !llvm.ptr -> f64
-    %99 = llvm.extractvalue %50[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %100 = llvm.mlir.constant(3 : index) : i64
-    %101 = llvm.mul %70, %100 overflow<nsw, nuw> : i64
-    %102 = llvm.add %101, %73 overflow<nsw, nuw> : i64
-    %103 = llvm.getelementptr inbounds|nuw %99[%102] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %104 = llvm.load %103 : !llvm.ptr -> f64
-    %105 = llvm.fmul %88, %98 : f64
-    %106 = llvm.fadd %104, %105 : f64
-    %107 = llvm.extractvalue %50[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %108 = llvm.mlir.constant(3 : index) : i64
-    %109 = llvm.mul %70, %108 overflow<nsw, nuw> : i64
-    %110 = llvm.add %109, %73 overflow<nsw, nuw> : i64
-    %111 = llvm.getelementptr inbounds|nuw %107[%110] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    llvm.store %106, %111 : f64, !llvm.ptr
-    %112 = llvm.add %76, %19 : i64
-    %113 = builtin.unrealized_conversion_cast %112 : i64 to index
-    %114 = builtin.unrealized_conversion_cast %113 : index to i64
-    llvm.br ^bb11(%114 : i64)
-  ^bb13:  // pred: ^bb11
-    %115 = llvm.add %73, %19 : i64
-    %116 = builtin.unrealized_conversion_cast %115 : i64 to index
-    %117 = builtin.unrealized_conversion_cast %116 : index to i64
-    llvm.br ^bb9(%117 : i64)
-  ^bb14:  // pred: ^bb9
-    %118 = llvm.add %70, %19 : i64
-    %119 = builtin.unrealized_conversion_cast %118 : i64 to index
-    %120 = builtin.unrealized_conversion_cast %119 : index to i64
-    llvm.br ^bb7(%120 : i64)
-  ^bb15:  // pred: ^bb7
-    llvm.return %52 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+    llvm.br ^bb5(%29 : i64)
+  ^bb5(%39: i64):  // 2 preds: ^bb4, ^bb6
+    %40 = builtin.unrealized_conversion_cast %39 : i64 to index
+    %41 = llvm.icmp "slt" %39, %32 : i64
+    llvm.cond_br %41, ^bb6, ^bb7
+  ^bb6:  // pred: ^bb5
+    %42 = llvm.extractvalue %16[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %43 = llvm.extractvalue %16[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %44 = llvm.getelementptr %42[%43] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %45 = llvm.extractvalue %16[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %46 = llvm.mul %33, %45 overflow<nsw, nuw> : i64
+    %47 = llvm.extractvalue %16[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %48 = llvm.mul %39, %47 overflow<nsw, nuw> : i64
+    %49 = llvm.add %46, %48 overflow<nsw, nuw> : i64
+    %50 = llvm.getelementptr inbounds|nuw %44[%49] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %51 = llvm.load %50 : !llvm.ptr -> f32
+    %52 = llvm.extractvalue %7[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %53 = llvm.extractvalue %7[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %54 = llvm.getelementptr %52[%53] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %55 = llvm.extractvalue %7[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %56 = llvm.mul %39, %55 overflow<nsw, nuw> : i64
+    %57 = llvm.extractvalue %7[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %58 = llvm.mul %36, %57 overflow<nsw, nuw> : i64
+    %59 = llvm.add %56, %58 overflow<nsw, nuw> : i64
+    %60 = llvm.getelementptr inbounds|nuw %54[%59] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %61 = llvm.load %60 : !llvm.ptr -> f32
+    %62 = llvm.extractvalue %25[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %63 = llvm.extractvalue %25[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %64 = llvm.getelementptr %62[%63] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %65 = llvm.extractvalue %25[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %66 = llvm.mul %33, %65 overflow<nsw, nuw> : i64
+    %67 = llvm.extractvalue %25[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %68 = llvm.mul %36, %67 overflow<nsw, nuw> : i64
+    %69 = llvm.add %66, %68 overflow<nsw, nuw> : i64
+    %70 = llvm.getelementptr inbounds|nuw %64[%69] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %71 = llvm.load %70 : !llvm.ptr -> f32
+    %72 = llvm.fmul %51, %61 : f32
+    %73 = llvm.fadd %71, %72 : f32
+    %74 = llvm.extractvalue %25[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %75 = llvm.extractvalue %25[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %76 = llvm.getelementptr %74[%75] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %77 = llvm.extractvalue %25[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %78 = llvm.mul %33, %77 overflow<nsw, nuw> : i64
+    %79 = llvm.extractvalue %25[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %80 = llvm.mul %36, %79 overflow<nsw, nuw> : i64
+    %81 = llvm.add %78, %80 overflow<nsw, nuw> : i64
+    %82 = llvm.getelementptr inbounds|nuw %76[%81] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    llvm.store %73, %82 : f32, !llvm.ptr
+    %83 = llvm.add %39, %31 : i64
+    %84 = builtin.unrealized_conversion_cast %83 : i64 to index
+    %85 = builtin.unrealized_conversion_cast %84 : index to i64
+    llvm.br ^bb5(%85 : i64)
+  ^bb7:  // pred: ^bb5
+    %86 = llvm.add %36, %31 : i64
+    %87 = builtin.unrealized_conversion_cast %86 : i64 to index
+    %88 = builtin.unrealized_conversion_cast %87 : index to i64
+    llvm.br ^bb3(%88 : i64)
+  ^bb8:  // pred: ^bb3
+    %89 = llvm.add %33, %31 : i64
+    %90 = builtin.unrealized_conversion_cast %89 : i64 to index
+    %91 = builtin.unrealized_conversion_cast %90 : index to i64
+    llvm.br ^bb1(%91 : i64)
+  ^bb9:  // pred: ^bb1
+    llvm.return %25 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   }
 }
 ```
@@ -780,8 +642,7 @@ This pass cleans up the IR by resolving `builtin.unrealized_conversion_cast` ope
 
 ```mlir
 module {
-  llvm.func @malloc(i64) -> !llvm.ptr
-  llvm.func @main(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64, %arg6: i64, %arg7: !llvm.ptr, %arg8: !llvm.ptr, %arg9: i64, %arg10: i64, %arg11: i64, %arg12: i64, %arg13: i64) -> !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> {
+  llvm.func @main(%arg0: !llvm.ptr, %arg1: !llvm.ptr, %arg2: i64, %arg3: i64, %arg4: i64, %arg5: i64, %arg6: i64, %arg7: !llvm.ptr, %arg8: !llvm.ptr, %arg9: i64, %arg10: i64, %arg11: i64, %arg12: i64, %arg13: i64, %arg14: !llvm.ptr, %arg15: !llvm.ptr, %arg16: i64, %arg17: i64, %arg18: i64, %arg19: i64, %arg20: i64) -> !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> {
     %0 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
     %1 = llvm.insertvalue %arg7, %0[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %2 = llvm.insertvalue %arg8, %1[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
@@ -798,118 +659,85 @@ module {
     %13 = llvm.insertvalue %arg5, %12[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %14 = llvm.insertvalue %arg4, %13[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
     %15 = llvm.insertvalue %arg6, %14[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %16 = llvm.mlir.constant(4 : index) : i64
-    %17 = llvm.mlir.constant(1 : index) : i64
-    %18 = llvm.mlir.constant(3 : index) : i64
-    %19 = llvm.mlir.constant(0 : index) : i64
-    %20 = llvm.mlir.constant(0.000000e+00 : f64) : f64
-    %21 = llvm.mlir.constant(3 : index) : i64
-    %22 = llvm.mlir.constant(3 : index) : i64
-    %23 = llvm.mlir.constant(1 : index) : i64
-    %24 = llvm.mlir.constant(9 : index) : i64
-    %25 = llvm.mlir.zero : !llvm.ptr
-    %26 = llvm.getelementptr %25[%24] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %27 = llvm.ptrtoint %26 : !llvm.ptr to i64
-    %28 = llvm.mlir.constant(64 : index) : i64
-    %29 = llvm.add %27, %28 : i64
-    %30 = llvm.call @malloc(%29) : (i64) -> !llvm.ptr
-    %31 = llvm.ptrtoint %30 : !llvm.ptr to i64
-    %32 = llvm.mlir.constant(1 : index) : i64
-    %33 = llvm.sub %28, %32 : i64
-    %34 = llvm.add %31, %33 : i64
-    %35 = llvm.urem %34, %28 : i64
-    %36 = llvm.sub %34, %35 : i64
-    %37 = llvm.inttoptr %36 : i64 to !llvm.ptr
-    %38 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
-    %39 = llvm.insertvalue %30, %38[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %40 = llvm.insertvalue %37, %39[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %41 = llvm.mlir.constant(0 : index) : i64
-    %42 = llvm.insertvalue %41, %40[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %43 = llvm.insertvalue %21, %42[3, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %44 = llvm.insertvalue %22, %43[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %45 = llvm.insertvalue %22, %44[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %46 = llvm.insertvalue %23, %45[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    llvm.br ^bb1(%19 : i64)
-  ^bb1(%47: i64):  // 2 preds: ^bb0, ^bb5
-    %48 = llvm.icmp "slt" %47, %18 : i64
-    llvm.cond_br %48, ^bb2, ^bb6
+    %16 = llvm.mlir.poison : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+    %17 = llvm.insertvalue %arg14, %16[0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %18 = llvm.insertvalue %arg15, %17[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %19 = llvm.insertvalue %arg16, %18[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %20 = llvm.insertvalue %arg17, %19[3, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %21 = llvm.insertvalue %arg19, %20[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %22 = llvm.insertvalue %arg18, %21[3, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %23 = llvm.insertvalue %arg20, %22[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %24 = llvm.mlir.constant(0 : index) : i64
+    %25 = llvm.mlir.constant(4 : index) : i64
+    %26 = llvm.mlir.constant(1 : index) : i64
+    %27 = llvm.mlir.constant(3 : index) : i64
+    llvm.br ^bb1(%24 : i64)
+  ^bb1(%28: i64):  // 2 preds: ^bb0, ^bb8
+    %29 = llvm.icmp "slt" %28, %25 : i64
+    llvm.cond_br %29, ^bb2, ^bb9
   ^bb2:  // pred: ^bb1
-    llvm.br ^bb3(%19 : i64)
-  ^bb3(%49: i64):  // 2 preds: ^bb2, ^bb4
-    %50 = llvm.icmp "slt" %49, %18 : i64
-    llvm.cond_br %50, ^bb4, ^bb5
+    llvm.br ^bb3(%24 : i64)
+  ^bb3(%30: i64):  // 2 preds: ^bb2, ^bb7
+    %31 = llvm.icmp "slt" %30, %25 : i64
+    llvm.cond_br %31, ^bb4, ^bb8
   ^bb4:  // pred: ^bb3
-    %51 = llvm.extractvalue %46[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %52 = llvm.mlir.constant(3 : index) : i64
-    %53 = llvm.mul %47, %52 overflow<nsw, nuw> : i64
-    %54 = llvm.add %53, %49 overflow<nsw, nuw> : i64
-    %55 = llvm.getelementptr inbounds|nuw %51[%54] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    llvm.store %20, %55 : f64, !llvm.ptr
-    %56 = llvm.add %49, %17 : i64
-    llvm.br ^bb3(%56 : i64)
-  ^bb5:  // pred: ^bb3
-    %57 = llvm.add %47, %17 : i64
-    llvm.br ^bb1(%57 : i64)
-  ^bb6:  // pred: ^bb1
-    llvm.br ^bb7(%19 : i64)
-  ^bb7(%58: i64):  // 2 preds: ^bb6, ^bb14
-    %59 = llvm.icmp "slt" %58, %18 : i64
-    llvm.cond_br %59, ^bb8, ^bb15
-  ^bb8:  // pred: ^bb7
-    llvm.br ^bb9(%19 : i64)
-  ^bb9(%60: i64):  // 2 preds: ^bb8, ^bb13
-    %61 = llvm.icmp "slt" %60, %18 : i64
-    llvm.cond_br %61, ^bb10, ^bb14
-  ^bb10:  // pred: ^bb9
-    llvm.br ^bb11(%19 : i64)
-  ^bb11(%62: i64):  // 2 preds: ^bb10, ^bb12
-    %63 = llvm.icmp "slt" %62, %16 : i64
-    llvm.cond_br %63, ^bb12, ^bb13
-  ^bb12:  // pred: ^bb11
-    %64 = llvm.extractvalue %15[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %65 = llvm.extractvalue %15[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %66 = llvm.getelementptr %64[%65] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %67 = llvm.extractvalue %15[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %68 = llvm.mul %58, %67 overflow<nsw, nuw> : i64
-    %69 = llvm.extractvalue %15[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %70 = llvm.mul %62, %69 overflow<nsw, nuw> : i64
-    %71 = llvm.add %68, %70 overflow<nsw, nuw> : i64
-    %72 = llvm.getelementptr inbounds|nuw %66[%71] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %73 = llvm.load %72 : !llvm.ptr -> f64
-    %74 = llvm.extractvalue %7[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %75 = llvm.extractvalue %7[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %76 = llvm.getelementptr %74[%75] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %77 = llvm.extractvalue %7[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %78 = llvm.mul %62, %77 overflow<nsw, nuw> : i64
-    %79 = llvm.extractvalue %7[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %80 = llvm.mul %60, %79 overflow<nsw, nuw> : i64
-    %81 = llvm.add %78, %80 overflow<nsw, nuw> : i64
-    %82 = llvm.getelementptr inbounds|nuw %76[%81] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %83 = llvm.load %82 : !llvm.ptr -> f64
-    %84 = llvm.extractvalue %46[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %85 = llvm.mlir.constant(3 : index) : i64
-    %86 = llvm.mul %58, %85 overflow<nsw, nuw> : i64
-    %87 = llvm.add %86, %60 overflow<nsw, nuw> : i64
-    %88 = llvm.getelementptr inbounds|nuw %84[%87] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    %89 = llvm.load %88 : !llvm.ptr -> f64
-    %90 = llvm.fmul %73, %83 : f64
-    %91 = llvm.fadd %89, %90 : f64
-    %92 = llvm.extractvalue %46[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
-    %93 = llvm.mlir.constant(3 : index) : i64
-    %94 = llvm.mul %58, %93 overflow<nsw, nuw> : i64
-    %95 = llvm.add %94, %60 overflow<nsw, nuw> : i64
-    %96 = llvm.getelementptr inbounds|nuw %92[%95] : (!llvm.ptr, i64) -> !llvm.ptr, f64
-    llvm.store %91, %96 : f64, !llvm.ptr
-    %97 = llvm.add %62, %17 : i64
-    llvm.br ^bb11(%97 : i64)
-  ^bb13:  // pred: ^bb11
-    %98 = llvm.add %60, %17 : i64
-    llvm.br ^bb9(%98 : i64)
-  ^bb14:  // pred: ^bb9
-    %99 = llvm.add %58, %17 : i64
-    llvm.br ^bb7(%99 : i64)
-  ^bb15:  // pred: ^bb7
-    llvm.return %46 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
+    llvm.br ^bb5(%24 : i64)
+  ^bb5(%32: i64):  // 2 preds: ^bb4, ^bb6
+    %33 = llvm.icmp "slt" %32, %27 : i64
+    llvm.cond_br %33, ^bb6, ^bb7
+  ^bb6:  // pred: ^bb5
+    %34 = llvm.extractvalue %15[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %35 = llvm.extractvalue %15[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %36 = llvm.getelementptr %34[%35] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %37 = llvm.extractvalue %15[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %38 = llvm.mul %28, %37 overflow<nsw, nuw> : i64
+    %39 = llvm.extractvalue %15[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %40 = llvm.mul %32, %39 overflow<nsw, nuw> : i64
+    %41 = llvm.add %38, %40 overflow<nsw, nuw> : i64
+    %42 = llvm.getelementptr inbounds|nuw %36[%41] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %43 = llvm.load %42 : !llvm.ptr -> f32
+    %44 = llvm.extractvalue %7[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %45 = llvm.extractvalue %7[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %46 = llvm.getelementptr %44[%45] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %47 = llvm.extractvalue %7[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %48 = llvm.mul %32, %47 overflow<nsw, nuw> : i64
+    %49 = llvm.extractvalue %7[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %50 = llvm.mul %30, %49 overflow<nsw, nuw> : i64
+    %51 = llvm.add %48, %50 overflow<nsw, nuw> : i64
+    %52 = llvm.getelementptr inbounds|nuw %46[%51] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %53 = llvm.load %52 : !llvm.ptr -> f32
+    %54 = llvm.extractvalue %23[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %55 = llvm.extractvalue %23[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %56 = llvm.getelementptr %54[%55] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %57 = llvm.extractvalue %23[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %58 = llvm.mul %28, %57 overflow<nsw, nuw> : i64
+    %59 = llvm.extractvalue %23[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %60 = llvm.mul %30, %59 overflow<nsw, nuw> : i64
+    %61 = llvm.add %58, %60 overflow<nsw, nuw> : i64
+    %62 = llvm.getelementptr inbounds|nuw %56[%61] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %63 = llvm.load %62 : !llvm.ptr -> f32
+    %64 = llvm.fmul %43, %53 : f32
+    %65 = llvm.fadd %63, %64 : f32
+    %66 = llvm.extractvalue %23[1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %67 = llvm.extractvalue %23[2] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %68 = llvm.getelementptr %66[%67] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    %69 = llvm.extractvalue %23[4, 0] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %70 = llvm.mul %28, %69 overflow<nsw, nuw> : i64
+    %71 = llvm.extractvalue %23[4, 1] : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)> 
+    %72 = llvm.mul %30, %71 overflow<nsw, nuw> : i64
+    %73 = llvm.add %70, %72 overflow<nsw, nuw> : i64
+    %74 = llvm.getelementptr inbounds|nuw %68[%73] : (!llvm.ptr, i64) -> !llvm.ptr, f32
+    llvm.store %65, %74 : f32, !llvm.ptr
+    %75 = llvm.add %32, %26 : i64
+    llvm.br ^bb5(%75 : i64)
+  ^bb7:  // pred: ^bb5
+    %76 = llvm.add %30, %26 : i64
+    llvm.br ^bb3(%76 : i64)
+  ^bb8:  // pred: ^bb3
+    %77 = llvm.add %28, %26 : i64
+    llvm.br ^bb1(%77 : i64)
+  ^bb9:  // pred: ^bb1
+    llvm.return %23 : !llvm.struct<(ptr, ptr, i64, array<2 x i64>, array<2 x i64>)>
   }
 }
 ```
