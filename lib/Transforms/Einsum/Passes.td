@@ -6,7 +6,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def EinsumHLToLL : Pass<"einsum-hl-to-ll", "mlir::func::FuncOp"> {
+def EinsumHLToLL : Pass<"einsum-hl-to-ll", "mlir::ModuleOp"> {
   let summary = "Lower einsum.hl ops to einsum.ll ops";
   let description = [{
     Converts symbolic high-level EinsumHL into lower-level EinsumLL,
