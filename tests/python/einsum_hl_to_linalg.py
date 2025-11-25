@@ -103,7 +103,7 @@ def main():
             pm = PassManager('any')
             pm.add('einsum-hl-to-ll')
             pm.add('einsum-ll-to-linalg')
-            pm.run(func_op)
+            pm.run(module.operation)
             
             print(module)
             
