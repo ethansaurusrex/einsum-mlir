@@ -11,7 +11,9 @@ declare_mlir_dialect_python_bindings(
   TD_FILE dialects/EinsumOps.td
   SOURCES
     dialects/einsum.py
-    #einsum_mlir/dialects/_ods_common.py
+    api.py
+    __init__.py
+
   DIALECT_NAME einsum
   DEPENDS MLIREinsumOpsIncGen
 )
