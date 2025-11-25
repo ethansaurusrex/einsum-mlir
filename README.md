@@ -741,3 +741,171 @@ module {
   }
 }
 ```
+
+
+## PTX-Backend
+
+All credit here goes to Govardhan@https://github.com/chioni16 (save for the tests :D )
+
+### Example Pass and Output
+
+## Sample PTX Backend Output
+
+Running:
+
+```bash
+./build-ninja/tools/einsum-opt/einsum-opt \
+  --linalg-generalize-named-ops \
+  --empty-tensor-to-alloc-tensor \
+  --one-shot-bufferize="bufferize-function-boundaries=1" \
+  --convert-linalg-to-parallel-loops \
+  --parallel-loops-tracker \
+  --parallel-loops-remover \
+  --scf-to-ptx \
+  tmp/linalg.mlir
+```
+with the same input as above:
+```mlir
+#map = affine_map<(d0, d1, d2) -> (d0, d2)>
+#map1 = affine_map<(d0, d1, d2) -> (d2, d1)>
+#map2 = affine_map<(d0, d1, d2) -> (d0, d1)>
+module {
+  func.func @main(%arg0: tensor<4x3xf32>, %arg1: tensor<3x4xf32>, %arg2: tensor<4x4xf32>) -> tensor<4x4xf32> {
+    %0 = linalg.generic {indexing_maps = [#map, #map1, #map2], iterator_types = ["parallel", "parallel", "reduction"]} ins(%arg0, %arg1 : tensor<4x3xf32>, tensor<3x4xf32>) outs(%arg2 : tensor<4x4xf32>) {
+    ^bb0(%in: f32, %in_0: f32, %out: f32):
+      %1 = arith.mulf %in, %in_0 : f32
+      %2 = arith.addf %out, %1 : f32
+      linalg.yield %2 : f32
+    } -> tensor<4x4xf32>
+    return %0 : tensor<4x4xf32>
+  }
+}
+```
+
+
+produces a full end-to-end lowering trace followed by generated PTX and a CUDA launcher stub.
+
+### Parallel Loop Analysis
+
+The backend prints diagnostics after each round of analysis:
+
+```
+┌─────────────────────────────────────────────┐
+│  SCF Parallel Loop Count Summary           │
+├─────────────────────────────────────────────┤
+│  Total parallel loops: 2
+│  Functions with parallel loops: 1
+└─────────────────────────────────────────────┘
+```
+
+Later, after transformation passes remove or lower them:
+
+```
+┌─────────────────────────────────────────────┐
+│  SCF Parallel Loop Count Summary           │
+├─────────────────────────────────────────────┤
+│  Total parallel loops: 0
+│  Functions with parallel loops: 0
+└─────────────────────────────────────────────┘
+```
+
+This demonstrates that the pipeline is locating SCF `parallel` loops, instrumenting them, and then lowering them to GPU thread-index arithmetic or serial loops depending on legality.
+
+### Generated PTX (Excerpt)
+
+The backend emits valid PTX headers, register declarations, thread-index arithmetic, and a kernel entry point:
+
+```ptx
+//
+.version 7.0
+.target sm_75
+.address_size 64
+
+.visible .entry main(
+    .param .u64 param_0,
+    .param .u64 param_1
+)
+{
+    .reg .pred %p<30>;
+    .reg .u32 %r<30>;
+    .reg .u64 %rd<30>;
+    .reg .f32 %f<30>;
+    .reg .f64 %fd<30>;
+
+    ld.param.u64 %rd0, [param_0];
+    ld.param.u64 %rd1, [param_1];
+
+    mov.u32 %r7, %tid.x;
+    mov.u32 %r8, %ctaid.x;
+    mov.u32 %r9, %ntid.x;
+    mul.lo.u32 %r10, %r8, %r9;
+    add.u32 %r11, %r10, %r7;
+```
+
+Thread-to-loop-index mapping is handled explicitly because SCF loops are being lowered directly to raw PTX control flow.
+
+### Unsupported Operations
+
+In this example, operations that do not yet have PTX-side lowering hooks are emitted as comments:
+
+```
+// Unsupported operation: memref.alloc
+```
+
+This is expected: PTX has no heap or stack allocation. Future support will insert host-side allocations or convert such ops into shared/global GPU buffers.
+
+### Incomplete or Invalid Lowering Cases
+
+Some PTX instructions contain placeholders due to missing address computations or unsupported index expressions:
+
+```
+div.u32 %r12, %r11, ;
+rem.u32 %r13, %r11, ;
+st.global.f64 [], %fd6;
+```
+
+These appear whenever the lowering lacks enough information to compute:
+
+* loop bounds,
+* induction variable expressions,
+* memref address calculations,
+* or constant divisors.
+
+Fixing this requires improving legality checks and adding dedicated address-computation patterns for memrefs.
+
+### Host-Side CUDA Launcher Stub
+
+For convenience, the backend emits a simple launcher:
+
+```cpp
+void main_launcher(float *param_0, float *param_1)
+{
+    int threads = 0;
+    int blocks = 0;
+    main_kernel<<<blocks, threads>>>(param_0, param_1);
+}
+```
+
+`threads` and `blocks` are placeholders; real launch configuration must be supplied by later passes or by user code.
+
+### Final Lowered MLIR Module
+
+After all SCF lowering and GPU conversion, the backend prints the final MLIR:
+
+```mlir
+module {
+  func.func public @main(%arg0: memref<3x4xf64>, %arg1: memref<4x3xf64>) -> memref<3x3xf64> {
+    %alloc = memref.alloc() : memref<3x3xf64>
+    scf.for %arg2 = %c0 to %c4 step %c1 {
+      %4 = memref.load %arg0[%2, %arg2]
+      %5 = memref.load %arg1[%arg2, %3]
+      %6 = memref.load %alloc[%2, %3]
+      %7 = arith.mulf %4, %5
+      %8 = arith.addf %6, %7
+      memref.store %8, %alloc[%2, %3]
+    }
+    return %alloc : memref<3x3xf64>
+  }
+}
+```
+

@@ -1,7 +1,8 @@
-#include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
 #include "lib/Dialect/Einsum/EinsumDialect.h"
+#include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
 #include "lib/Transforms/Einsum/Passes.h"
 #include "lib/Transforms/Einsum/Pipelines.h"
+#include "lib/Transforms/Einsum/PTX/Passes.h"
 
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/InitAllDialects.h"
@@ -22,6 +23,7 @@ int main(int argc, char **argv) {
 
   mlir::einsum::registerEinsumPasses();
   mlir::einsum::registerEinsumToLinalgPasses();
+  mlir::einsum::registerPtxGenPasses();
   mlir::einsum::registerEinsumPipelines();
   
   return mlir::asMainReturnCode(
