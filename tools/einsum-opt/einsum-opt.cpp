@@ -13,6 +13,7 @@ int main(int argc, char **argv) {
   registry.insert<mlir::einsum::EinsumDialect>();
   mlir::registerAllPasses();
   mlir::registerAllDialects(registry);
+  mlir::registerAllPasses();
 
   mlir::einsum::registerEinsumPasses();
   mlir::einsum::registerEinsumToLinalgPasses();
