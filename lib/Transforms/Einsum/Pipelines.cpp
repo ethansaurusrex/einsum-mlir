@@ -1,5 +1,7 @@
 #include "lib/Transforms/Einsum/Passes.h"
+#include "lib/Transforms/Einsum/PTX/Passes.h"
 #include "lib/Conversion/EinsumToLinalg/EinsumToLinalg.h"
+
 #include "mlir/Pass/Pass.h"
 #include "mlir/Conversion/Passes.h"
 #include "mlir/Pass/PassOptions.h"
@@ -29,6 +31,51 @@ static void registerEinsumToLinalgPipeline() {
         pm.addPass(createCSEPass());
       });
 }
+
+static void registerLinalgToPTXPipeline() {
+  PassPipelineRegistration<>(
+      "linalg-to-ptx-pipeline",
+      "Lower Linalg Generic to PTX",
+      [&](OpPassManager &pm) {
+	pm.addPass(mlir::createLinalgGeneralizeNamedOpsPass());
+	pm.addPass(mlir::bufferization::createEmptyTensorToAllocTensorPass());
+	{ // limits opts scope
+	  mlir::bufferization::OneShotBufferizePassOptions opts;
+	  opts.bufferizeFunctionBoundaries = true;
+	pm.addPass(mlir::bufferization::createOneShotBufferizePass(opts));
+	}
+	pm.addPass(mlir::createConvertLinalgToParallelLoopsPass());
+	pm.addPass(createParallelLoopsTracker());
+	pm.addPass(createParallelLoopsRemover());
+	pm.addPass(createPtxCodegen());
+      });
+}
+
+static void registerEinsumToPTXPipeline() {
+  PassPipelineRegistration<>(
+      "einsum-to-ptx-pipeline",
+      "Lower Einsum dialect to PTX",			     
+      [&](OpPassManager &pm) {
+	// einsum-to-linalg-pipeline
+        pm.addPass(createEinsumHLToLL());
+        pm.addPass(createEinsumToLinalg());
+        pm.addPass(createCanonicalizerPass());
+        pm.addPass(createCSEPass());
+	// linalg-to-ptx-pipeline
+	pm.addPass(mlir::createLinalgGeneralizeNamedOpsPass());
+	pm.addPass(mlir::bufferization::createEmptyTensorToAllocTensorPass());
+	{ // limits opts scope
+	  mlir::bufferization::OneShotBufferizePassOptions opts;
+	  opts.bufferizeFunctionBoundaries = true;
+	pm.addPass(mlir::bufferization::createOneShotBufferizePass(opts));
+	}
+	pm.addPass(mlir::createConvertLinalgToParallelLoopsPass());
+	pm.addPass(createParallelLoopsTracker());
+	pm.addPass(createParallelLoopsRemover());
+	pm.addPass(createPtxCodegen());
+      });			     
+} 
+    
 
 static void registerLinalgToLLVMPipeline() {
   PassPipelineRegistration<>(
@@ -123,6 +170,8 @@ static void registerLinalgToPTXPipelineBuiltin() {
 
 void registerEinsumPipelines() {
   registerEinsumToLinalgPipeline();
+  registerLinalgToPTXPipeline();
+  registerEinsumToPTXPipeline();
   registerLinalgToLLVMPipeline();
   registerLinalgToPTXPipelineBuiltin();
 }

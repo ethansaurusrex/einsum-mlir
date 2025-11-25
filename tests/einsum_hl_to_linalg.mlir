@@ -1,4 +1,4 @@
-// RUN: einsum-opt %s --einsum-hl-to-ll | einsum-opt --einsum-ll-to-linalg | FileCheck %s
+// RUN: einsum-opt %s --einsum-to-linalg-pipeline | FileCheck %s
 
 module {
   func.func @main(%arg0: !einsum.named_axes_tensor<["i","k"]:tensor<4x3xf32>>, %arg1: !einsum.named_axes_tensor<["k","j"]:tensor<3x4xf32>>, %arg2: !einsum.named_axes_tensor<["i","j"]:tensor<4x4xf32>>) -> !einsum.named_axes_tensor<["i","j"]:tensor<4x4xf32>> {
